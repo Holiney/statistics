@@ -1,0 +1,5 @@
+{
+  "name": "Work Stats PWA",
+  "description": "Offline-capable statistics tracking for personnel, vehicles, and office supplies with SharePoint integration.",
+  "requestFramePermissions": []
+}
