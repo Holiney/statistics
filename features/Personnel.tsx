@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { UsersRound, Car, Copy, Minus, Plus, Camera, Trash } from 'lucide-react';
-import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage } from '../utils';
+import { UsersRound, Car, Copy, Minus, Plus } from 'lucide-react';
+import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
 
 interface Props {
   settings: AppSettings;
@@ -16,8 +16,6 @@ interface Props {
 export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
   const t = TRANSLATIONS[settings.language];
   const [activeZone, setActiveZone] = useState<string | null>(null);
-  const [sessionImages, setSessionImages] = useState<string[]>([]); // Base64 images for this session
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fix: added explicit cast to handle potential unknown type issues in specific environments
   const getCount = (key: string) => (counts[key] as number) || 0;
@@ -31,27 +29,6 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       return { ...prev, [activeZone]: newVal };
     });
   };
-
-  const handleCameraClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file);
-        setSessionImages(prev => [...prev, compressed]);
-        onShowToast('Photo attached', 'success');
-      } catch (e) {
-        onShowToast('Failed to process image', 'error');
-      }
-    }
-    // Reset input
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const clearImages = () => setSessionImages([]);
 
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
@@ -72,11 +49,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
           date: new Date().toISOString(),
           type: 'personnel',
           summary: `${t.personnel} & ${t.cars}`,
-          details: counts,
-          images: [...sessionImages] // Save copy of images
+          details: counts
         });
-        // Optional: clear images after save? 
-        // setSessionImages([]);
       }
     } else {
       onShowToast('Copy failed', 'error');
@@ -85,15 +59,6 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
   return (
     <div className="space-y-4 pb-32">
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        ref={fileInputRef} 
-        className="hidden" 
-        onChange={handleFileChange}
-      />
-
       <div className="grid grid-cols-2 gap-4">
         <Card 
           onClick={() => setActiveZone('parking')}
@@ -132,30 +97,13 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         ))}
       </div>
 
-      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-3">
-        {sessionImages.length > 0 && (
-           <div className="bg-slate-800 text-white p-2 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-2">
-              <Camera size={16} /> 
-              <span className="text-xs font-bold">{sessionImages.length}</span>
-              <button onClick={clearImages} className="p-1 bg-white/20 rounded-full ml-1"><Trash size={10} /></button>
-           </div>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            onClick={handleCameraClick}
-            className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90"
-          >
-            <Camera size={28} />
-          </button>
-          
+      <div className="fixed bottom-24 right-4 z-30">
           <button
             onClick={handleCopy}
             className="bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 transition-transform active:scale-90"
           >
             <Copy size={28} />
           </button>
-        </div>
       </div>
 
       <BottomSheet
@@ -168,7 +116,6 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
             {activeZone ? getCount(activeZone) : 0}
           </div>
           
-          {/* Increased Height to h-40 (160px) for massive touch targets */}
           <div className="flex gap-4 w-full px-1">
             <button
               onClick={() => handleAdjust(-1)}
