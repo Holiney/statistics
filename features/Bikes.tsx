@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Bike, Share2, Minus, Plus, Camera, X, ImageIcon } from 'lucide-react';
+import { Bike, FileText, Minus, Plus, Camera, X, ImageIcon, Image as ImageIcon2 } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage, base64ToFile } from '../utils';
 import { get, set } from 'idb-keyval';
 
@@ -94,19 +94,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       }
   };
 
-  const handleShare = async () => {
-    triggerHaptic(settings.vibration);
-    
-    // 1. Generate Text Report (WhatsApp friendly format)
-    let report = `📅 *${getTodayDateString()}* - ${t.bikes}\n\n`;
-    BIKE_CATEGORIES.forEach(cat => {
-      const count = getCount(cat);
-      if (count > 0) report += `▪️ ${cat}: *${count}*\n`;
-    });
-    
-    if (Object.keys(counts).length === 0) report += "No data";
-
-    // 2. Prepare Data for History
+  const saveHistoryIfNeeded = () => {
     const historyEntry: HistoryEntry = {
       id: generateId(), 
       date: new Date().toISOString(),
@@ -116,56 +104,79 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       images: [...sessionImages]
     };
 
-    // 3. Save/Update History FIRST (Ensures data is saved even if share is cancelled)
     if (Object.values(counts).some((v: number) => v > 0) || sessionImages.length > 0) {
       onSaveHistory(historyEntry);
-      // We show toast later
+      return true;
+    }
+    return false;
+  };
+
+  // Option 1: Share Text (Report)
+  const handleShareText = async () => {
+    triggerHaptic(settings.vibration);
+    const saved = saveHistoryIfNeeded();
+
+    let report = `📅 *${getTodayDateString()}* - ${t.bikes}\n\n`;
+    BIKE_CATEGORIES.forEach(cat => {
+      const count = getCount(cat);
+      if (count > 0) report += `▪️ ${cat}: *${count}*\n`;
+    });
+    if (Object.keys(counts).length === 0) report += "No data";
+
+    if (navigator.share && navigator.canShare && navigator.canShare({text: report})) {
+      try {
+        await navigator.share({
+            title: 'Work Stats',
+            text: report
+        });
+        onShowToast(t.sharing, 'success');
+      } catch (e) {
+         if ((e as Error).name !== 'AbortError') {
+             await copyToClipboard(report);
+             onShowToast(t.copied, 'success');
+         }
+      }
+    } else {
+      await copyToClipboard(report);
+      onShowToast(t.copied, 'success');
+    }
+  };
+
+  // Option 2: Share Photos (Files Only)
+  const handleSharePhotos = async () => {
+    triggerHaptic(settings.vibration);
+    
+    if (sessionImages.length === 0) {
+      onShowToast('No photos', 'error');
+      return;
     }
 
-    // 4. Force Copy Text to Clipboard (Fixes "photos sent but data not")
-    // Many apps ignore the 'text' field when 'files' are present in share data.
-    // By copying to clipboard, the user can easily paste the report as a caption.
-    await copyToClipboard(report);
+    const saved = saveHistoryIfNeeded();
 
-    // 5. Share Logic (Files + Text)
     if (navigator.share && navigator.canShare) {
       try {
         const filesArray = sessionImages.map((b64, idx) => 
           base64ToFile(b64, `bike_${idx+1}.jpg`)
         );
 
-        const shareData: ShareData = {
-          files: filesArray.length > 0 ? filesArray : undefined,
-          // Note: On many Android devices/WhatsApp, 'title' is ignored, 
-          // but 'text' becomes the image caption if files are attached.
-          title: 'Work Stats',
-          text: report, 
-        };
-
-        if (navigator.canShare(shareData)) {
-          // If files are attached, tell user text is copied because it might disappear
-          if (filesArray.length > 0) {
-            onShowToast('Text copied to clipboard (Paste if missing!)', 'success');
-          } else {
-             onShowToast(t.sharing, 'success');
-          }
-          await navigator.share(shareData);
+        if (navigator.canShare({ files: filesArray })) {
+          await navigator.share({
+            files: filesArray,
+            title: 'Work Stats Photos'
+          });
+          // Do not send text here to avoid confusion in some apps
+          onShowToast(t.sharing, 'success');
         } else {
-          // Fallback if files can't be shared but text can
-          await navigator.share({ title: 'Work Stats', text: report });
-          onShowToast('Shared text only (files not supported)', 'success');
+          onShowToast('Sharing files not supported', 'error');
         }
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('Share failed', err);
-          // Text is already copied above
-          onShowToast(t.copied + ' (Share failed)', 'error');
+          onShowToast('Share failed', 'error');
         }
       }
     } else {
-      // Fallback for desktop/unsupported browsers
-      // Text is already copied above
-      onShowToast(t.copied, 'success');
+      onShowToast('Sharing not supported on this device', 'error');
     }
   };
 
@@ -232,28 +243,35 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         ))}
       </div>
 
-      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-3">
-        <div className="flex gap-4">
+      <div className="fixed bottom-24 right-4 z-30 flex gap-3">
           <button
             onClick={handleCameraClick}
-            className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90 relative"
+            className="bg-slate-700 hover:bg-slate-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-transform active:scale-90 relative"
           >
-            <Camera size={28} />
+            <Camera size={24} />
             {sessionImages.length > 0 && (
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white dark:border-slate-800">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white dark:border-slate-800">
                 {sessionImages.length}
               </div>
             )}
           </button>
           
           <button
-            onClick={handleShare}
-            className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-green-500/40 transition-transform active:scale-90 gap-2"
+            onClick={handleShareText}
+            className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-90 gap-2 flex-1"
           >
-            <Share2 size={24} strokeWidth={2.5} />
-            <span className="font-bold text-lg">{t.share}</span>
+            <FileText size={20} strokeWidth={2.5} />
+            <span className="font-bold text-sm uppercase">{t.shareText}</span>
           </button>
-        </div>
+
+          <button
+            onClick={handleSharePhotos}
+            className={`bg-blue-600 hover:bg-blue-500 text-white px-4 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-90 gap-2 flex-1 ${sessionImages.length === 0 ? 'opacity-50 grayscale' : ''}`}
+            disabled={sessionImages.length === 0}
+          >
+            <ImageIcon2 size={20} strokeWidth={2.5} />
+            <span className="font-bold text-sm uppercase">{t.sharePhotos}</span>
+          </button>
       </div>
 
       <BottomSheet

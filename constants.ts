@@ -62,6 +62,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     copy: 'Copy',
     copied: 'Copied to clipboard!',
     share: 'Share',
+    shareText: 'Text',
+    sharePhotos: 'Photos',
     sharing: 'Sharing...',
     save: 'Save',
     submit: 'Submit Cloud',
@@ -81,6 +83,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     local: 'Local',
     confirmClear: 'Are you sure?',
     officeNote: 'Office Supply Log',
+    installApp: 'Install App',
   },
   ua: {
     personnel: 'Персонал',
@@ -94,6 +97,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     copy: 'Копіювати',
     copied: 'Скопійовано!',
     share: 'Поділитись',
+    shareText: 'Текст',
+    sharePhotos: 'Фото',
     sharing: 'Відкриваю...',
     save: 'Зберегти',
     submit: 'Google ☁️',
@@ -113,6 +118,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     local: 'Локально',
     confirmClear: 'Ви впевнені?',
     officeNote: 'Облік канцелярії',
+    installApp: 'Встановити додаток',
   },
   nl: {
     personnel: 'Personeel',
@@ -126,6 +132,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     copy: 'Kopiëren',
     copied: 'Gekopieerd!',
     share: 'Delen',
+    shareText: 'Tekst',
+    sharePhotos: 'Fotos',
     sharing: 'Delen...',
     save: 'Opslaan',
     submit: 'Cloud Sync',
@@ -145,5 +153,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     local: 'Lokaal',
     confirmClear: 'Weet u het zeker?',
     officeNote: 'Kantoorartikelen log',
+    installApp: 'App installeren',
   }
 };

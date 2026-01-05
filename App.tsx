@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon, Download } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
 import { AppSettings, HistoryEntry, Tab } from './types';
@@ -9,7 +9,7 @@ import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
 import { History } from './features/History';
 import { Settings } from './features/Settings';
-import { Toast } from './components/UI';
+import { Toast, Button } from './components/UI';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('personnel');
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -56,9 +57,27 @@ const App: React.FC = () => {
     msg: '', type: 'success', visible: false
   });
 
+  // Handle PWA Install Prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
+
   // Handle Android Back Button & History Navigation
   useEffect(() => {
-    // Ensure initial state exists
     if (!window.history.state) {
       window.history.replaceState({ tab: 'personnel' }, '');
     }
@@ -67,7 +86,6 @@ const App: React.FC = () => {
       if (event.state && event.state.tab) {
         setActiveTab(event.state.tab);
       } else {
-        // Fallback for when history is empty but we are in app (rare)
         setActiveTab('personnel');
       }
     };
@@ -90,7 +108,6 @@ const App: React.FC = () => {
         const historyList = data || [];
         setHistory(historyList);
         
-        // Restore logic: Check if we have data for TODAY in history, but our current drafts are empty.
         const todayStr = new Date().toDateString();
         
         const todayPersonnel = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'personnel');
@@ -123,7 +140,7 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
-  // Persist Draft Data (Counters) automatically
+  // Persist Draft Data
   useEffect(() => {
     localStorage.setItem('ws_personnel_draft', JSON.stringify(personnelCounts));
   }, [personnelCounts]);
@@ -136,7 +153,7 @@ const App: React.FC = () => {
     localStorage.setItem('ws_office_draft', JSON.stringify(officeData));
   }, [officeData]);
 
-  // Persist History to IndexedDB
+  // Persist History
   useEffect(() => {
     if (isHistoryLoaded) {
       set('ws_history', history).catch(err => {
@@ -155,11 +172,9 @@ const App: React.FC = () => {
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500);
   };
 
-  // Modified to UPSERT (Update or Insert) based on Date + Type
   const addHistoryEntry = (entry: HistoryEntry) => {
     setHistory(prev => {
       const entryDateStr = new Date(entry.date).toDateString();
-      
       const existingIndex = prev.findIndex(item => 
         new Date(item.date).toDateString() === entryDateStr && 
         item.type === entry.type
@@ -193,11 +208,19 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 selection:bg-blue-500 selection:text-white pb-safe">
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-5">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 selection:bg-blue-500 selection:text-white pb-safe">
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex justify-between items-center">
         <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
           Work Stats
         </h1>
+        {installPrompt && (
+          <button 
+            onClick={handleInstallClick}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg active:scale-95 transition-transform"
+          >
+            <Download size={14} /> {t.installApp}
+          </button>
+        )}
       </header>
 
       <main className="p-4 max-w-lg mx-auto min-h-[85vh]">

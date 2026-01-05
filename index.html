@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Work Stats</title>
+    <link rel="manifest" href="./manifest.json" />
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="theme-color" content="#0f172a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -24,9 +25,12 @@
       * {
         -webkit-tap-highlight-color: transparent;
       }
-      /* Disable Pull-to-Refresh on mobile */
-      body {
+      /* STRICT Disable Pull-to-Refresh on mobile */
+      html, body, #root {
         overscroll-behavior-y: none;
+        overscroll-behavior: none;
+        height: 100%;
+        overflow: hidden; /* Main scroll is handled by inner containers */
       }
     </style>
   <script type="importmap">
@@ -44,7 +48,7 @@
 </script>
 </head>
   <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300 selection:bg-blue-500 selection:text-white">
-    <div id="root"></div>
+    <div id="root" class="h-full overflow-y-auto"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
