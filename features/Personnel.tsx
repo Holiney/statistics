@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { UsersRound, Car, Copy, Minus, Plus } from 'lucide-react';
-import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
+import { UsersRound, Car, Copy, Minus, Plus, Camera, Trash } from 'lucide-react';
+import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage } from '../utils';
 
 interface Props {
   settings: AppSettings;
@@ -17,6 +16,8 @@ interface Props {
 export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
   const t = TRANSLATIONS[settings.language];
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [sessionImages, setSessionImages] = useState<string[]>([]); // Base64 images for this session
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fix: added explicit cast to handle potential unknown type issues in specific environments
   const getCount = (key: string) => (counts[key] as number) || 0;
@@ -31,14 +32,33 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     });
   };
 
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file);
+        setSessionImages(prev => [...prev, compressed]);
+        onShowToast('Photo attached', 'success');
+      } catch (e) {
+        onShowToast('Failed to process image', 'error');
+      }
+    }
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const clearImages = () => setSessionImages([]);
+
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
     ZONES.forEach(zone => {
-      // Fix: using getCount helper to ensure numeric comparison and avoid unknown type errors
       const count = getCount(zone);
       if (count > 0) report += `${zone}: ${count}\n`;
     });
-    // Fix: using getCount helper to ensure numeric comparison and avoid unknown type errors
     const parkingCount = getCount('parking');
     if (parkingCount > 0) report += `${t.parking}: ${parkingCount}`;
     if (Object.keys(counts).length === 0) report += "No data";
@@ -46,14 +66,17 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     const success = await copyToClipboard(report);
     if (success) {
       onShowToast(t.copied, 'success');
-      if (Object.values(counts).some(v => v > 0)) {
+      if (Object.values(counts).some((v: number) => v > 0)) {
         onSaveHistory({
           id: generateId(),
           date: new Date().toISOString(),
           type: 'personnel',
           summary: `${t.personnel} & ${t.cars}`,
-          details: counts
+          details: counts,
+          images: [...sessionImages] // Save copy of images
         });
+        // Optional: clear images after save? 
+        // setSessionImages([]);
       }
     } else {
       onShowToast('Copy failed', 'error');
@@ -62,6 +85,15 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
   return (
     <div className="space-y-4 pb-32">
+      <input 
+        type="file" 
+        accept="image/*" 
+        capture="environment" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={handleFileChange}
+      />
+
       <div className="grid grid-cols-2 gap-4">
         <Card 
           onClick={() => setActiveZone('parking')}
@@ -100,13 +132,30 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         ))}
       </div>
 
-      <div className="fixed bottom-24 right-4 z-30">
-        <button
-          onClick={handleCopy}
-          className="bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 transition-transform active:scale-90"
-        >
-          <Copy size={28} />
-        </button>
+      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-3">
+        {sessionImages.length > 0 && (
+           <div className="bg-slate-800 text-white p-2 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-2">
+              <Camera size={16} /> 
+              <span className="text-xs font-bold">{sessionImages.length}</span>
+              <button onClick={clearImages} className="p-1 bg-white/20 rounded-full ml-1"><Trash size={10} /></button>
+           </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleCameraClick}
+            className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90"
+          >
+            <Camera size={28} />
+          </button>
+          
+          <button
+            onClick={handleCopy}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 transition-transform active:scale-90"
+          >
+            <Copy size={28} />
+          </button>
+        </div>
       </div>
 
       <BottomSheet
@@ -114,27 +163,28 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         onClose={() => setActiveZone(null)}
         title={activeZone === 'parking' ? t.parking : activeZone || ''}
       >
-        <div className="flex flex-col gap-8 items-center pt-4 pb-8">
+        <div className="flex flex-col gap-6 items-center pt-2 pb-6">
           <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter">
             {activeZone ? getCount(activeZone) : 0}
           </div>
           
-          <div className="flex gap-6 w-full px-2">
+          {/* Increased Height to h-40 (160px) for massive touch targets */}
+          <div className="flex gap-4 w-full px-1">
             <button
               onClick={() => handleAdjust(-1)}
-              className="flex-1 h-28 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600"
+              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300"
             >
-              <Minus size={48} strokeWidth={3} />
+              <Minus size={64} strokeWidth={3} className="opacity-80" />
             </button>
             <button
               onClick={() => handleAdjust(1)}
-              className="flex-1 h-28 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700"
+              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400"
             >
-              <Plus size={48} strokeWidth={3} />
+              <Plus size={64} strokeWidth={3} />
             </button>
           </div>
 
-           <div className="grid grid-cols-4 gap-3 w-full">
+           <div className="grid grid-cols-4 gap-3 w-full mt-2">
              {[5, 10, 20, 50].map(val => (
                 <button 
                   key={val}

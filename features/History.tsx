@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Trash2, Calendar, CheckCircle2, Sparkles, ChevronRight, Users, Bike, Package } from 'lucide-react';
+import { Trash2, Calendar, CheckCircle2, Sparkles, ChevronRight, Users, Bike, Package, X, Clock, ImageIcon } from 'lucide-react';
 import { Card, BottomSheet, Button } from '../components/UI';
 
 interface Props {
@@ -17,6 +16,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
   const t = TRANSLATIONS[settings.language];
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
 
   // Grouping logic
   const groupedHistory = history.reduce((acc, entry) => {
@@ -32,8 +32,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
   }, {} as Record<string, Record<string, HistoryEntry[]>>);
 
   const sortedDates = Object.keys(groupedHistory).sort((a, b) => {
-    // Basic date parsing for sorting
-    return new Date(b).getTime() - new Date(a).getTime();
+    return new Date(b).getTime() - new Date(a).getTime(); // Newest first
   });
 
   const handleAnalyze = async () => {
@@ -129,7 +128,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
         <div className="space-y-8">
           {sortedDates.map((date) => (
             <div key={date} className="space-y-4">
-              <h3 className="sticky top-16 z-10 py-2 text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <h3 className="sticky top-16 z-10 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
                 <span className="w-8 h-px bg-slate-200 dark:bg-slate-800"></span>
                 {date}
               </h3>
@@ -145,33 +144,33 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                     </div>
                     
                     <div className="space-y-3">
-                      {entries.map((entry) => (
-                        <Card key={entry.id} className="relative group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all duration-300">
-                          <div className="flex justify-between items-start">
+                      {(entries as HistoryEntry[]).map((entry) => (
+                        <Card 
+                          key={entry.id} 
+                          onClick={() => setSelectedEntry(entry)}
+                          className="relative group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all duration-300 active:scale-98"
+                        >
+                          <div className="flex justify-between items-center">
                             <div className="flex-1">
-                              <p className="font-bold text-slate-800 dark:text-slate-100 text-lg mb-1">{entry.summary}</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {Object.entries(entry.details).slice(0, 6).map(([key, val]) => (
-                                  <span key={key} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50">
-                                    <span className="opacity-60 mr-1">{key}:</span> {val as React.ReactNode}
+                              <p className="font-bold text-slate-800 dark:text-slate-100 text-lg">{entry.summary}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                  <Clock size={12} />
+                                  {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {entry.images && entry.images.length > 0 && (
+                                  <span className="text-xs font-bold text-blue-500 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                                    <ImageIcon size={12} /> {entry.images.length}
                                   </span>
-                                ))}
-                                {Object.keys(entry.details).length > 6 && (
-                                  <span className="text-[10px] text-slate-400 self-center">...</span>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="flex flex-col items-end gap-2">
-                               <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded">
-                                 {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                               </span>
+                            <div className="flex items-center gap-3">
                                {entry.synced && (
-                                 <div className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
-                                    <CheckCircle2 size={14} />
-                                    <span className="text-[10px] font-bold uppercase tracking-tighter">Synced</span>
-                                 </div>
+                                  <CheckCircle2 size={18} className="text-emerald-500" />
                                )}
+                               <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
                             </div>
                           </div>
                         </Card>
@@ -193,7 +192,6 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
       >
         <div className="space-y-6">
           <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 leading-relaxed text-slate-700 dark:text-slate-300">
-             {/* Fix: safely handle potentially undefined split result using the nullish coalescing operator to avoid unknown property access errors */}
              {(analysisResult?.split('\n') ?? []).map((line, i) => (
                <p key={i} className={line.trim() === '' ? 'h-2' : 'mb-3'}>{line}</p>
              ))}
@@ -202,6 +200,68 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
             {t.confirmClear ? 'Зрозуміло' : 'Got it'}
           </Button>
         </div>
+      </BottomSheet>
+
+      {/* Full Detail View Modal */}
+      <BottomSheet
+        isOpen={!!selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        title={selectedEntry?.summary || 'Details'}
+      >
+        {selectedEntry && (
+          <div className="space-y-8 pb-8">
+            <div className="flex items-center justify-between text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                 <Calendar size={18} />
+                 <span className="font-medium">
+                    {new Date(selectedEntry.date).toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                 </span>
+              </div>
+              <div className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                {new Date(selectedEntry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+
+            {/* Photos Section */}
+            {selectedEntry.images && selectedEntry.images.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                   <ImageIcon size={16} /> Photos
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedEntry.images.map((img, idx) => (
+                    <img 
+                      key={idx} 
+                      src={img} 
+                      alt={`Evidence ${idx + 1}`} 
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 w-full h-auto object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Data Table */}
+            <div>
+               <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Data</h4>
+               <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                 {Object.entries(selectedEntry.details).map(([key, val], idx) => (
+                   <div 
+                     key={key} 
+                     className={`flex justify-between items-center p-4 ${idx !== Object.entries(selectedEntry.details).length - 1 ? 'border-b border-slate-200/50 dark:border-slate-800/50' : ''}`}
+                   >
+                     <span className="font-medium text-slate-700 dark:text-slate-300">{key}</span>
+                     <span className="font-mono font-bold text-xl text-blue-600 dark:text-blue-400">{val as React.ReactNode}</span>
+                   </div>
+                 ))}
+               </div>
+            </div>
+
+            <Button fullWidth variant="secondary" onClick={() => setSelectedEntry(null)}>
+               Close
+            </Button>
+          </div>
+        )}
       </BottomSheet>
     </div>
   );
