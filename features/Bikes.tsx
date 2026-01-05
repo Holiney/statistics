@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Bike, Copy, Minus, Plus, Camera, Trash } from 'lucide-react';
+import { Bike, Copy, Minus, Plus, Camera, Trash, X, ImageIcon } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage } from '../utils';
+import { get, set, del } from 'idb-keyval';
 
 interface Props {
   settings: AppSettings;
@@ -17,7 +18,23 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   const t = TRANSLATIONS[settings.language];
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [sessionImages, setSessionImages] = useState<string[]>([]);
+  const [isImagesLoaded, setIsImagesLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load unsaved images from IDB on mount
+  useEffect(() => {
+    get<string[]>('ws_bikes_images_draft').then((imgs) => {
+      if (imgs) setSessionImages(imgs);
+      setIsImagesLoaded(true);
+    });
+  }, []);
+
+  // Save images to IDB whenever they change (Auto-save draft)
+  useEffect(() => {
+    if (isImagesLoaded) {
+      set('ws_bikes_images_draft', sessionImages);
+    }
+  }, [sessionImages, isImagesLoaded]);
 
   // Fix: added explicit cast to handle potential unknown type issues in specific environments
   const getCount = (key: string) => (counts[key] as number) || 0;
@@ -50,7 +67,17 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const clearImages = () => setSessionImages([]);
+  const removeImage = (index: number) => {
+    if (window.confirm('Delete this photo?')) {
+      setSessionImages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const clearImages = () => {
+      if(window.confirm('Clear all photos?')) {
+          setSessionImages([]);
+      }
+  };
 
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
@@ -69,7 +96,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     }
 
     // 2. Always save to history if there is data, regardless of copy success
-    if (Object.values(counts).some((v: number) => v > 0)) {
+    if (Object.values(counts).some((v: number) => v > 0) || sessionImages.length > 0) {
       onSaveHistory({
         id: generateId(),
         date: new Date().toISOString(),
@@ -78,9 +105,12 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         details: counts,
         images: [...sessionImages]
       });
+      
       // 3. Clear images after saving to prevent duplicates in next entry
       setSessionImages([]);
-      // Optional: Visual confirmation of save if copy failed
+      // Clear IDB draft
+      del('ws_bikes_images_draft');
+      
       if (!success) onShowToast(t.success, 'success');
     }
   };
@@ -95,6 +125,38 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         className="hidden" 
         onChange={handleFileChange}
       />
+
+      {/* Gallery Block */}
+      {sessionImages.length > 0 && (
+        <Card className="border-2 border-orange-500/20 bg-orange-50 dark:bg-orange-900/10">
+          <div className="flex justify-between items-center mb-3">
+             <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+               <ImageIcon size={18} className="text-orange-500"/>
+               Gallery ({sessionImages.length})
+             </h3>
+             <button onClick={clearImages} className="text-red-500 text-xs font-bold uppercase p-2">
+               Clear All
+             </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {sessionImages.map((img, idx) => (
+              <div key={idx} className="relative aspect-square group">
+                <img 
+                  src={img} 
+                  alt={`Shot ${idx}`} 
+                  className="w-full h-full object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"
+                />
+                <button 
+                  onClick={() => removeImage(idx)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"
+                >
+                  <X size={12} strokeWidth={3} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4">
         {BIKE_CATEGORIES.map(cat => (
@@ -117,20 +179,17 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       </div>
 
       <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-3">
-        {sessionImages.length > 0 && (
-           <div className="bg-slate-800 text-white p-2 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-2">
-              <Camera size={16} /> 
-              <span className="text-xs font-bold">{sessionImages.length}</span>
-              <button onClick={clearImages} className="p-1 bg-white/20 rounded-full ml-1"><Trash size={10} /></button>
-           </div>
-        )}
-
         <div className="flex gap-3">
           <button
             onClick={handleCameraClick}
-            className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90"
+            className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90 relative"
           >
             <Camera size={28} />
+            {sessionImages.length > 0 && (
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white dark:border-slate-800">
+                {sessionImages.length}
+              </div>
+            )}
           </button>
           
           <button

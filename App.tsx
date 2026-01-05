@@ -22,44 +22,46 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('personnel');
   
   const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('ws_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    try {
+      const saved = localStorage.getItem('ws_settings');
+      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
   });
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
-  const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>({});
-  const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
-  const [officeData, setOfficeData] = useState<Record<string, Record<string, number | string>>>({});
+  // Initialize state from LocalStorage to persist data across app restarts
+  const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ws_personnel_draft') || '{}');
+    } catch { return {}; }
+  });
+
+  const [bikeCounts, setBikeCounts] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ws_bikes_draft') || '{}');
+    } catch { return {}; }
+  });
+
+  const [officeData, setOfficeData] = useState<Record<string, Record<string, number | string>>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ws_office_draft') || '{}');
+    } catch { return {}; }
+  });
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error'; visible: boolean }>({
     msg: '', type: 'success', visible: false
   });
 
-  // Load History from IndexedDB (with migration from LocalStorage)
+  // Load History from IndexedDB
   useEffect(() => {
     const initHistory = async () => {
       try {
-        // 1. Try to load from IDB first
         let data = await get<HistoryEntry[]>('ws_history');
-
-        // 2. If IDB is empty, check LocalStorage (migration)
-        if (!data) {
-          const local = localStorage.getItem('ws_history');
-          if (local) {
-            try {
-              data = JSON.parse(local);
-              // Save to IDB immediately
-              await set('ws_history', data);
-              // Clear legacy storage to free up space
-              localStorage.removeItem('ws_history');
-            } catch (e) {
-              console.error('Migration failed', e);
-            }
-          }
-        }
-
+        // Migration logic for old localStorage history could go here if needed
         setHistory(data || []);
       } catch (err) {
         console.error('Failed to load history', err);
@@ -68,10 +70,10 @@ const App: React.FC = () => {
         setIsHistoryLoaded(true);
       }
     };
-
     initHistory();
   }, []);
 
+  // Persist Settings
   useEffect(() => {
     localStorage.setItem('ws_settings', JSON.stringify(settings));
     if (settings.theme === 'dark') {
@@ -81,7 +83,20 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
-  // Save History to IndexedDB whenever it changes
+  // Persist Draft Data (Counters) automatically
+  useEffect(() => {
+    localStorage.setItem('ws_personnel_draft', JSON.stringify(personnelCounts));
+  }, [personnelCounts]);
+
+  useEffect(() => {
+    localStorage.setItem('ws_bikes_draft', JSON.stringify(bikeCounts));
+  }, [bikeCounts]);
+
+  useEffect(() => {
+    localStorage.setItem('ws_office_draft', JSON.stringify(officeData));
+  }, [officeData]);
+
+  // Persist History to IndexedDB
   useEffect(() => {
     if (isHistoryLoaded) {
       set('ws_history', history).catch(err => {
