@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Bike, Briefcase, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
 
 import { AppSettings, HistoryEntry, Tab } from './types';
 import { TRANSLATIONS } from './constants';
@@ -11,14 +11,13 @@ import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  language: 'ua', // Default per requirements
-  theme: 'dark', // Modern default
+  language: 'ua',
+  theme: 'dark',
   vibration: true,
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec'
 };
 
 const App: React.FC = () => {
-  // State initialization with LocalStorage
   const [activeTab, setActiveTab] = useState<Tab>('personnel');
   
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -31,7 +30,6 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Lifted state to persist data between tab switches
   const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>({});
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
   const [officeData, setOfficeData] = useState<Record<string, Record<string, number | string>>>({});
@@ -40,10 +38,8 @@ const App: React.FC = () => {
     msg: '', type: 'success', visible: false
   });
 
-  // Persist effects
   useEffect(() => {
     localStorage.setItem('ws_settings', JSON.stringify(settings));
-    // Apply theme to body
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -55,7 +51,6 @@ const App: React.FC = () => {
     localStorage.setItem('ws_history', JSON.stringify(history));
   }, [history]);
 
-  // Actions
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
@@ -75,26 +70,23 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[settings.language];
 
-  // Tab config
   const tabs = [
-    { id: 'personnel', icon: Users, label: t.personnel },
+    { id: 'personnel', icon: UsersRound, label: t.personnel },
     { id: 'bikes', icon: Bike, label: t.bikes },
-    { id: 'office', icon: Briefcase, label: t.office },
+    { id: 'office', icon: Package, label: t.office },
     { id: 'history', icon: HistoryIcon, label: t.history },
     { id: 'settings', icon: SettingsIcon, label: t.settings },
   ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 selection:bg-blue-500 selection:text-white pb-safe">
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-4">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-5">
+        <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
           Work Stats
         </h1>
       </header>
 
-      {/* Main Content Area */}
-      <main className="p-4 max-w-lg mx-auto min-h-[80vh]">
+      <main className="p-4 max-w-lg mx-auto min-h-[85vh]">
         {activeTab === 'personnel' && (
           <Personnel 
             settings={settings} 
@@ -135,9 +127,8 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-40 pb-safe">
-        <div className="flex justify-around items-center max-w-lg mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 z-40 pb-safe">
+        <div className="flex justify-around items-center max-w-lg mx-auto px-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -145,14 +136,14 @@ const App: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as Tab)}
-                className={`flex flex-col items-center py-3 px-2 w-full transition-colors ${
+                className={`flex flex-col items-center py-4 px-1 w-full transition-all ${
                   isActive 
-                  ? 'text-blue-600 dark:text-blue-400' 
-                  : 'text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400'
+                  ? 'text-blue-600 dark:text-blue-400 scale-110' 
+                  : 'text-slate-400 dark:text-slate-600 hover:text-slate-600'
                 }`}
               >
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className="mb-1 transition-transform duration-200" style={{ transform: isActive ? 'scale(1.1)' : 'scale(1)' }} />
-                <span className="text-[10px] font-medium truncate w-full text-center">
+                <Icon size={24} strokeWidth={isActive ? 3 : 2} className="mb-1" />
+                <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-60'}`}>
                   {tab.label}
                 </span>
               </button>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
@@ -17,7 +18,8 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   const t = TRANSLATIONS[settings.language];
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
-  const getCount = (key: string) => counts[key] || 0;
+  // Fix: added explicit cast to handle potential unknown type issues in specific environments
+  const getCount = (key: string) => (counts[key] as number) || 0;
 
   const handleAdjust = (delta: number) => {
     if (!activeCat) return;
@@ -32,9 +34,10 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
     BIKE_CATEGORIES.forEach(cat => {
-      if (counts[cat] > 0) report += `${cat}: ${counts[cat]}\n`;
+      // Fix: using getCount helper to ensure numeric comparison and avoid unknown type errors
+      const count = getCount(cat);
+      if (count > 0) report += `${cat}: ${count}\n`;
     });
-
     if (Object.keys(counts).length === 0) report += "No data";
 
     const success = await copyToClipboard(report);
@@ -55,21 +58,21 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   };
 
   return (
-    <div className="space-y-4 pb-24">
-      <div className="grid grid-cols-1 gap-3">
+    <div className="space-y-4 pb-32">
+      <div className="grid grid-cols-1 gap-4">
         {BIKE_CATEGORIES.map(cat => (
           <Card 
             key={cat} 
             onClick={() => setActiveCat(cat)}
-            className="flex justify-between items-center py-5 active:bg-blue-50 dark:active:bg-blue-900/20"
+            className="flex justify-between items-center py-6 px-6 active:bg-orange-50 dark:active:bg-orange-900/10 hover:border-orange-300 transition-all shadow-sm"
           >
-            <div className="flex items-center gap-4">
-               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
-                 <Bike size={20} />
+            <div className="flex items-center gap-5">
+               <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-2xl">
+                 <Bike size={24} />
                </div>
-               <span className="font-medium text-lg">{cat}</span>
+               <span className="font-bold text-lg text-slate-800 dark:text-slate-200">{cat}</span>
             </div>
-            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100 font-mono">
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">
               {getCount(cat)}
             </span>
           </Card>
@@ -79,9 +82,9 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       <div className="fixed bottom-24 right-4 z-30">
         <button
           onClick={handleCopy}
-          className="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-full shadow-lg shadow-orange-500/40 transition-transform active:scale-90"
+          className="bg-orange-500 hover:bg-orange-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/40 transition-transform active:scale-90"
         >
-          <Copy size={24} />
+          <Copy size={28} />
         </button>
       </div>
 
@@ -90,25 +93,37 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         onClose={() => setActiveCat(null)}
         title={activeCat || ''}
       >
-        <div className="flex flex-col gap-6 items-center">
-          <div className="text-6xl font-bold font-mono text-slate-800 dark:text-white">
+        <div className="flex flex-col gap-8 items-center pt-4 pb-8">
+          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter">
             {activeCat ? getCount(activeCat) : 0}
           </div>
           
-          <div className="flex gap-4 w-full justify-center">
+          <div className="flex gap-6 w-full px-2">
             <button
               onClick={() => handleAdjust(-1)}
-              className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 active:scale-90 transition-transform"
+              className="flex-1 h-28 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200"
             >
-              <Minus size={32} />
+              <Minus size={48} strokeWidth={3} />
             </button>
             <button
               onClick={() => handleAdjust(1)}
-              className="w-20 h-20 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 active:scale-90 transition-transform"
+              className="flex-1 h-28 rounded-3xl bg-orange-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30 active:scale-95 transition-all active:bg-orange-600"
             >
-              <Plus size={32} />
+              <Plus size={48} strokeWidth={3} />
             </button>
           </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full">
+             {[5, 10].map(val => (
+                <button 
+                  key={val}
+                  onClick={() => handleAdjust(val)}
+                  className="py-5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-xl font-black text-slate-600 dark:text-slate-400 active:scale-95 transition-all border border-slate-200 dark:border-slate-700"
+                >
+                  +{val}
+                </button>
+             ))}
+           </div>
         </div>
       </BottomSheet>
     </div>

@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
-import { Card, BottomSheet, Button } from '../components/UI';
+import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Users, Car, Copy, Minus, Plus } from 'lucide-react';
+import { UsersRound, Car, Copy, Minus, Plus } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
 
 interface Props {
@@ -17,8 +18,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
   const t = TRANSLATIONS[settings.language];
   const [activeZone, setActiveZone] = useState<string | null>(null);
 
-  // Helper to get count safely
-  const getCount = (key: string) => counts[key] || 0;
+  // Fix: added explicit cast to handle potential unknown type issues in specific environments
+  const getCount = (key: string) => (counts[key] as number) || 0;
 
   const handleAdjust = (delta: number) => {
     if (!activeZone) return;
@@ -32,24 +33,19 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
-    
-    // Sort keys: Zones first, then Parking
     ZONES.forEach(zone => {
-      if (counts[zone] > 0) report += `${zone}: ${counts[zone]}\n`;
+      // Fix: using getCount helper to ensure numeric comparison and avoid unknown type errors
+      const count = getCount(zone);
+      if (count > 0) report += `${zone}: ${count}\n`;
     });
-    
-    if (counts['parking'] > 0) {
-      report += `${t.parking}: ${counts['parking']}`;
-    }
-
-    if (Object.keys(counts).length === 0) {
-        report += "No data";
-    }
+    // Fix: using getCount helper to ensure numeric comparison and avoid unknown type errors
+    const parkingCount = getCount('parking');
+    if (parkingCount > 0) report += `${t.parking}: ${parkingCount}`;
+    if (Object.keys(counts).length === 0) report += "No data";
 
     const success = await copyToClipboard(report);
     if (success) {
       onShowToast(t.copied, 'success');
-      // Auto-save history on copy if there is data
       if (Object.values(counts).some(v => v > 0)) {
         onSaveHistory({
           id: generateId(),
@@ -65,37 +61,38 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
   };
 
   return (
-    <div className="space-y-4 pb-24">
-      <div className="grid grid-cols-2 gap-3">
-        {/* Car Counter - Special Card */}
+    <div className="space-y-4 pb-32">
+      <div className="grid grid-cols-2 gap-4">
         <Card 
           onClick={() => setActiveZone('parking')}
-          className="col-span-2 bg-gradient-to-br from-slate-800 to-slate-900 border-none !text-white"
+          className="col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 border-none !text-white shadow-lg shadow-slate-500/10 p-6"
         >
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/10 rounded-lg">
-                <Car size={24} />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                <Car size={28} className="text-blue-400" />
               </div>
-              <span className="font-semibold text-lg">{t.parking}</span>
+              <div>
+                <span className="block text-white/60 text-xs font-bold uppercase tracking-widest">{t.cars}</span>
+                <span className="text-xl font-bold">{t.parking}</span>
+              </div>
             </div>
-            <span className="text-3xl font-bold font-mono">{getCount('parking')}</span>
+            <span className="text-4xl font-black font-mono tracking-tighter">{getCount('parking')}</span>
           </div>
         </Card>
 
-        {/* Zones Grid */}
         {ZONES.map(zone => (
           <Card 
             key={zone} 
             onClick={() => setActiveZone(zone)}
-            className="flex flex-col justify-between h-32 active:bg-blue-50 dark:active:bg-blue-900/20"
+            className="flex flex-col justify-between h-36 active:bg-blue-50 dark:active:bg-blue-900/10 p-5 hover:border-blue-300 dark:hover:border-blue-800 transition-all border-slate-200 dark:border-slate-800"
           >
             <div className="flex justify-between items-start">
-              <span className="font-medium text-slate-500 dark:text-slate-400">{zone}</span>
-              <Users size={18} className="text-blue-500 opacity-50" />
+              <span className="font-bold text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wider">{zone}</span>
+              <UsersRound size={20} className="text-blue-500/40" />
             </div>
             <div className="text-right">
-              <span className="text-3xl font-bold text-slate-800 dark:text-slate-100 font-mono">
+              <span className="text-4xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">
                 {getCount(zone)}
               </span>
             </div>
@@ -103,48 +100,46 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         ))}
       </div>
 
-      {/* Persistent Copy Button */}
       <div className="fixed bottom-24 right-4 z-30">
         <button
           onClick={handleCopy}
-          className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg shadow-blue-600/40 transition-transform active:scale-90"
+          className="bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 transition-transform active:scale-90"
         >
-          <Copy size={24} />
+          <Copy size={28} />
         </button>
       </div>
 
-      {/* Input Bottom Sheet */}
       <BottomSheet
         isOpen={!!activeZone}
         onClose={() => setActiveZone(null)}
         title={activeZone === 'parking' ? t.parking : activeZone || ''}
       >
-        <div className="flex flex-col gap-6 items-center">
-          <div className="text-6xl font-bold font-mono text-slate-800 dark:text-white">
+        <div className="flex flex-col gap-8 items-center pt-4 pb-8">
+          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter">
             {activeZone ? getCount(activeZone) : 0}
           </div>
           
-          <div className="flex gap-4 w-full justify-center">
+          <div className="flex gap-6 w-full px-2">
             <button
               onClick={() => handleAdjust(-1)}
-              className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 active:scale-90 transition-transform"
+              className="flex-1 h-28 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600"
             >
-              <Minus size={32} />
+              <Minus size={48} strokeWidth={3} />
             </button>
             <button
               onClick={() => handleAdjust(1)}
-              className="w-20 h-20 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-90 transition-transform"
+              className="flex-1 h-28 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700"
             >
-              <Plus size={32} />
+              <Plus size={48} strokeWidth={3} />
             </button>
           </div>
 
-           <div className="grid grid-cols-4 gap-2 w-full mt-4">
+           <div className="grid grid-cols-4 gap-3 w-full">
              {[5, 10, 20, 50].map(val => (
                 <button 
                   key={val}
                   onClick={() => handleAdjust(val)}
-                  className="py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-sm font-semibold text-slate-500"
+                  className="py-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-base font-black text-slate-600 dark:text-slate-400 active:scale-95 active:bg-blue-50 transition-all border border-slate-200 dark:border-slate-700"
                 >
                   +{val}
                 </button>
