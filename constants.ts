@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.16';
+export const APP_VERSION = 'v1.17';
 
 // --- Lists ---
 
@@ -86,6 +86,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     confirmClear: 'Are you sure?',
     officeNote: 'Office Supply Log',
     installApp: 'Install App',
+    installDesc: 'Add to home screen for quick access',
+    install: 'Install',
+    later: 'Later',
   },
   ua: {
     personnel: 'Персонал',
@@ -121,6 +124,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     confirmClear: 'Ви впевнені?',
     officeNote: 'Облік канцелярії',
     installApp: 'Встановити додаток',
+    installDesc: 'Додати на головний екран',
+    install: 'Встановити',
+    later: 'Пізніше',
   },
   nl: {
     personnel: 'Personeel',
@@ -156,5 +162,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     confirmClear: 'Weet u het zeker?',
     officeNote: 'Kantoorartikelen log',
     installApp: 'App installeren',
+    installDesc: 'Toevoegen aan startscherm',
+    install: 'Installeren',
+    later: 'Later',
   }
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon, Download } from 'lucide-react';
+import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon, Download, X } from 'lucide-react';
 import { get, set } from 'idb-keyval';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { AppSettings, HistoryEntry, Tab } from './types';
 import { TRANSLATIONS } from './constants';
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('personnel');
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -62,18 +64,25 @@ const App: React.FC = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
+      // Wait a moment before showing the banner to not overwhelm the user immediately
+      setTimeout(() => setShowInstallBanner(true), 2000);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstallClick = async () => {
+  const handleInstallAccept = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') {
       setInstallPrompt(null);
+      setShowInstallBanner(false);
     }
+  };
+
+  const handleInstallDismiss = () => {
+    setShowInstallBanner(false);
   };
 
   // Handle Android Back Button & History Navigation
@@ -213,14 +222,6 @@ const App: React.FC = () => {
         <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
           Work Stats
         </h1>
-        {installPrompt && (
-          <button 
-            onClick={handleInstallClick}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg active:scale-95 transition-transform"
-          >
-            <Download size={14} /> {t.installApp}
-          </button>
-        )}
       </header>
 
       <main className="p-4 max-w-lg mx-auto min-h-[85vh]">
@@ -288,6 +289,43 @@ const App: React.FC = () => {
           })}
         </div>
       </nav>
+
+      {/* PWA Install Banner */}
+      <AnimatePresence>
+        {showInstallBanner && installPrompt && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-24 left-4 right-4 z-50 max-w-lg mx-auto"
+          >
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+              <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl">
+                 <Download size={24} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.installApp}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.installDesc}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={handleInstallAccept}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-lg active:scale-95 transition-transform"
+                >
+                  {t.install}
+                </button>
+                <button 
+                  onClick={handleInstallDismiss}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] font-bold uppercase tracking-wider p-1"
+                >
+                  {t.later}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Toast message={toast.msg} type={toast.type} isVisible={toast.visible} />
     </div>
