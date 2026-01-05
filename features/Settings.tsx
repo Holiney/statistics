@@ -3,6 +3,7 @@ import { TRANSLATIONS } from '../constants';
 import { AppSettings, Language } from '../types';
 import { Moon, Sun, Smartphone, Globe, Link } from 'lucide-react';
 import { Card } from '../components/UI';
+import { triggerHaptic } from '../utils';
 
 interface Props {
   settings: AppSettings;
@@ -11,6 +12,15 @@ interface Props {
 
 export const Settings: React.FC<Props> = ({ settings, updateSettings }) => {
   const t = TRANSLATIONS[settings.language];
+
+  const handleVibrationToggle = () => {
+    const newState = !settings.vibration;
+    updateSettings({ vibration: newState });
+    // Trigger feedback immediately if turning on (or if already on and just testing logic)
+    if (newState) {
+      triggerHaptic(true);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-24">
@@ -59,7 +69,7 @@ export const Settings: React.FC<Props> = ({ settings, updateSettings }) => {
              </Card>
 
              <Card 
-               onClick={() => updateSettings({ vibration: !settings.vibration })}
+               onClick={handleVibrationToggle}
                className="flex justify-between items-center"
              >
                 <div className="flex items-center gap-3">

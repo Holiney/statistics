@@ -3,8 +3,9 @@ export const getTodayDateString = () => {
 };
 
 export const triggerHaptic = (enabled: boolean) => {
-  if (enabled && navigator.vibrate) {
-    navigator.vibrate(15);
+  if (enabled && typeof navigator !== 'undefined' && navigator.vibrate) {
+    // Increased to 50ms as some Android devices ignore very short pulses (<20ms)
+    navigator.vibrate(50);
   }
 };
 
