@@ -1,6 +1,6 @@
-const CACHE_NAME = 'work-stats-v1.15';
+const CACHE_NAME = 'work-stats-v1.16';
+// Only cache specific files. Removing './' prevents 404 errors on some servers
 const URLS_TO_CACHE = [
-  './',
   './index.html',
   './manifest.json'
 ];
@@ -10,7 +10,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
+        console.log('Opened cache');
         return cache.addAll(URLS_TO_CACHE);
+      })
+      .catch((err) => {
+        console.error('Cache install failed:', err);
       })
   );
 });
@@ -21,6 +25,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -30,16 +35,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Handle navigation requests to ensure SPA works offline
+  // Navigation request (HTML) - Network First, fallback to Cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('./index.html');
-      })
+      fetch(event.request)
+        .catch(() => {
+          return caches.match('./index.html');
+        })
     );
     return;
   }
 
+  // Asset request - Cache First, fallback to Network
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -48,12 +55,11 @@ self.addEventListener('fetch', (event) => {
         }
         
         return fetch(event.request).then((response) => {
-          // Check if valid response
           if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
             return response;
           }
 
-          // Cache runtime requests (like CDN scripts)
+          // Cache valid runtime requests
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
