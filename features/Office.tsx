@@ -71,20 +71,20 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       
       if (url) {
         // Real Cloud Sync
-        const response = await fetch(url, {
+        // Google Apps Script requires no-cors mode and text/plain to avoid preflight CORS issues
+        await fetch(url, {
           method: 'POST',
+          mode: 'no-cors',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'text/plain',
           },
           body: JSON.stringify(payload)
         });
 
-        if (response.ok) {
-          synced = true;
-          onShowToast(t.success, 'success');
-        } else {
-          throw new Error(`Server responded with ${response.status}`);
-        }
+        // In no-cors mode, the response is opaque (status 0, ok false) so we cannot check response.ok.
+        // If the fetch promise resolves without throwing, we assume the request was sent successfully.
+        synced = true;
+        onShowToast(t.success, 'success');
       } else {
         // Demo Mode / Local Save Only
         // Simulating network delay for better UX
