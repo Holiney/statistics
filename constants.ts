@@ -1,5 +1,7 @@
 import { Language } from './types';
 
+export const APP_VERSION = 'v1.14';
+
 // --- Lists ---
 
 export const ZONES = [

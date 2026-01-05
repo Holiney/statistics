@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, BottomSheet } from '../components/UI';
-import { ZONES, TRANSLATIONS } from '../constants';
+import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
 import { UsersRound, Car, Copy, Minus, Plus } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
@@ -95,6 +95,10 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
             </div>
           </Card>
         ))}
+      </div>
+
+      <div className="flex justify-center w-full py-2">
+        <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono opacity-60">{APP_VERSION}</span>
       </div>
 
       <div className="fixed bottom-24 right-4 z-30">

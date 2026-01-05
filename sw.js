@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1';
+const CACHE_NAME = 'work-stats-v1.14';
 const URLS_TO_CACHE = [
   './',
   './index.html',
