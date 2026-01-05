@@ -119,10 +119,15 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     // 3. Save/Update History FIRST (Ensures data is saved even if share is cancelled)
     if (Object.values(counts).some((v: number) => v > 0) || sessionImages.length > 0) {
       onSaveHistory(historyEntry);
-      onShowToast(t.success, 'success');
+      // We show toast later
     }
 
-    // 4. Share Logic (Files + Text)
+    // 4. Force Copy Text to Clipboard (Fixes "photos sent but data not")
+    // Many apps ignore the 'text' field when 'files' are present in share data.
+    // By copying to clipboard, the user can easily paste the report as a caption.
+    await copyToClipboard(report);
+
+    // 5. Share Logic (Files + Text)
     if (navigator.share && navigator.canShare) {
       try {
         const filesArray = sessionImages.map((b64, idx) => 
@@ -138,6 +143,12 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         };
 
         if (navigator.canShare(shareData)) {
+          // If files are attached, tell user text is copied because it might disappear
+          if (filesArray.length > 0) {
+            onShowToast('Text copied to clipboard (Paste if missing!)', 'success');
+          } else {
+             onShowToast(t.sharing, 'success');
+          }
           await navigator.share(shareData);
         } else {
           // Fallback if files can't be shared but text can
@@ -147,13 +158,13 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('Share failed', err);
-          await copyToClipboard(report);
+          // Text is already copied above
           onShowToast(t.copied + ' (Share failed)', 'error');
         }
       }
     } else {
       // Fallback for desktop/unsupported browsers
-      await copyToClipboard(report);
+      // Text is already copied above
       onShowToast(t.copied, 'success');
     }
   };

@@ -56,6 +56,32 @@ const App: React.FC = () => {
     msg: '', type: 'success', visible: false
   });
 
+  // Handle Android Back Button & History Navigation
+  useEffect(() => {
+    // Ensure initial state exists
+    if (!window.history.state) {
+      window.history.replaceState({ tab: 'personnel' }, '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+      } else {
+        // Fallback for when history is empty but we are in app (rare)
+        setActiveTab('personnel');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleTabChange = (newTab: Tab) => {
+    if (newTab === activeTab) return;
+    setActiveTab(newTab);
+    window.history.pushState({ tab: newTab }, '');
+  };
+
   // Load History from IndexedDB
   useEffect(() => {
     const initHistory = async () => {
@@ -65,7 +91,6 @@ const App: React.FC = () => {
         setHistory(historyList);
         
         // Restore logic: Check if we have data for TODAY in history, but our current drafts are empty.
-        // This handles the case where user cleared cache but history remains, or just switching devices.
         const todayStr = new Date().toDateString();
         
         const todayPersonnel = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'personnel');
@@ -131,7 +156,6 @@ const App: React.FC = () => {
   };
 
   // Modified to UPSERT (Update or Insert) based on Date + Type
-  // This allows "Editing" existing entries for the same day
   const addHistoryEntry = (entry: HistoryEntry) => {
     setHistory(prev => {
       const entryDateStr = new Date(entry.date).toDateString();
@@ -142,16 +166,13 @@ const App: React.FC = () => {
       );
 
       if (existingIndex >= 0) {
-        // Entry exists for today, update it completely (including photos)
         const newHistory = [...prev];
-        // We preserve the original ID to prevent duplication issues, but update everything else
         newHistory[existingIndex] = { 
           ...entry, 
           id: prev[existingIndex].id 
         };
         return newHistory;
       } else {
-        // No entry for today, add new
         return [entry, ...prev];
       }
     });
@@ -228,7 +249,7 @@ const App: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
+                onClick={() => handleTabChange(tab.id as Tab)}
                 className={`flex flex-col items-center py-4 px-1 w-full transition-all ${
                   isActive 
                   ? 'text-blue-600 dark:text-blue-400 scale-110' 
