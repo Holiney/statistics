@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { get, set } from 'idb-keyval';
 
 import { AppSettings, HistoryEntry, Tab } from './types';
 import { TRANSLATIONS } from './constants';
@@ -25,10 +26,8 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
   });
 
-  const [history, setHistory] = useState<HistoryEntry[]>(() => {
-    const saved = localStorage.getItem('ws_history');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
   const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>({});
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
@@ -37,6 +36,41 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error'; visible: boolean }>({
     msg: '', type: 'success', visible: false
   });
+
+  // Load History from IndexedDB (with migration from LocalStorage)
+  useEffect(() => {
+    const initHistory = async () => {
+      try {
+        // 1. Try to load from IDB first
+        let data = await get<HistoryEntry[]>('ws_history');
+
+        // 2. If IDB is empty, check LocalStorage (migration)
+        if (!data) {
+          const local = localStorage.getItem('ws_history');
+          if (local) {
+            try {
+              data = JSON.parse(local);
+              // Save to IDB immediately
+              await set('ws_history', data);
+              // Clear legacy storage to free up space
+              localStorage.removeItem('ws_history');
+            } catch (e) {
+              console.error('Migration failed', e);
+            }
+          }
+        }
+
+        setHistory(data || []);
+      } catch (err) {
+        console.error('Failed to load history', err);
+        showToast('Storage Error', 'error');
+      } finally {
+        setIsHistoryLoaded(true);
+      }
+    };
+
+    initHistory();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ws_settings', JSON.stringify(settings));
@@ -47,9 +81,15 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
+  // Save History to IndexedDB whenever it changes
   useEffect(() => {
-    localStorage.setItem('ws_history', JSON.stringify(history));
-  }, [history]);
+    if (isHistoryLoaded) {
+      set('ws_history', history).catch(err => {
+        console.error('Failed to save history', err);
+        showToast('Failed to save history!', 'error');
+      });
+    }
+  }, [history, isHistoryLoaded]);
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

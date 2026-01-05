@@ -60,21 +60,28 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     });
     if (Object.keys(counts).length === 0) report += "No data";
 
+    // 1. Copy to clipboard
     const success = await copyToClipboard(report);
     if (success) {
       onShowToast(t.copied, 'success');
-       if (Object.values(counts).some((v: number) => v > 0)) {
-        onSaveHistory({
-          id: generateId(),
-          date: new Date().toISOString(),
-          type: 'bikes',
-          summary: t.bikes,
-          details: counts,
-          images: [...sessionImages]
-        });
-      }
     } else {
-      onShowToast('Copy failed', 'error');
+      onShowToast('Copy failed, check permissions', 'error');
+    }
+
+    // 2. Always save to history if there is data, regardless of copy success
+    if (Object.values(counts).some((v: number) => v > 0)) {
+      onSaveHistory({
+        id: generateId(),
+        date: new Date().toISOString(),
+        type: 'bikes',
+        summary: t.bikes,
+        details: counts,
+        images: [...sessionImages]
+      });
+      // 3. Clear images after saving to prevent duplicates in next entry
+      setSessionImages([]);
+      // Optional: Visual confirmation of save if copy failed
+      if (!success) onShowToast(t.success, 'success');
     }
   };
 
@@ -145,7 +152,6 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
             {activeCat ? getCount(activeCat) : 0}
           </div>
           
-          {/* Increased Height to h-40 (160px) */}
           <div className="flex gap-4 w-full px-1">
             <button
               onClick={() => handleAdjust(-1)}
