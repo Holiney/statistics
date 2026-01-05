@@ -61,8 +61,23 @@ const App: React.FC = () => {
     const initHistory = async () => {
       try {
         let data = await get<HistoryEntry[]>('ws_history');
-        // Migration logic for old localStorage history could go here if needed
-        setHistory(data || []);
+        const historyList = data || [];
+        setHistory(historyList);
+        
+        // Restore logic: Check if we have data for TODAY in history, but our current drafts are empty.
+        // This handles the case where user cleared cache but history remains, or just switching devices.
+        const todayStr = new Date().toDateString();
+        
+        const todayPersonnel = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'personnel');
+        if (todayPersonnel && Object.keys(JSON.parse(localStorage.getItem('ws_personnel_draft') || '{}')).length === 0) {
+          setPersonnelCounts(todayPersonnel.details);
+        }
+
+        const todayBikes = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'bikes');
+        if (todayBikes && Object.keys(JSON.parse(localStorage.getItem('ws_bikes_draft') || '{}')).length === 0) {
+          setBikeCounts(todayBikes.details);
+        }
+
       } catch (err) {
         console.error('Failed to load history', err);
         showToast('Storage Error', 'error');
@@ -115,8 +130,31 @@ const App: React.FC = () => {
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500);
   };
 
+  // Modified to UPSERT (Update or Insert) based on Date + Type
+  // This allows "Editing" existing entries for the same day
   const addHistoryEntry = (entry: HistoryEntry) => {
-    setHistory(prev => [entry, ...prev]);
+    setHistory(prev => {
+      const entryDateStr = new Date(entry.date).toDateString();
+      
+      const existingIndex = prev.findIndex(item => 
+        new Date(item.date).toDateString() === entryDateStr && 
+        item.type === entry.type
+      );
+
+      if (existingIndex >= 0) {
+        // Entry exists for today, update it completely (including photos)
+        const newHistory = [...prev];
+        // We preserve the original ID to prevent duplication issues, but update everything else
+        newHistory[existingIndex] = { 
+          ...entry, 
+          id: prev[existingIndex].id 
+        };
+        return newHistory;
+      } else {
+        // No entry for today, add new
+        return [entry, ...prev];
+      }
+    });
   };
 
   const clearHistory = () => {

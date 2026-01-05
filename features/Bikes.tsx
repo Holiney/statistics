@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Bike, Copy, Minus, Plus, Camera, Trash, X, ImageIcon } from 'lucide-react';
-import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage } from '../utils';
-import { get, set, del } from 'idb-keyval';
+import { Bike, Share2, Minus, Plus, Camera, X, ImageIcon } from 'lucide-react';
+import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage, base64ToFile } from '../utils';
+import { get, set } from 'idb-keyval';
 
 interface Props {
   settings: AppSettings;
@@ -23,10 +23,25 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
 
   // Load unsaved images from IDB on mount
   useEffect(() => {
-    get<string[]>('ws_bikes_images_draft').then((imgs) => {
-      if (imgs) setSessionImages(imgs);
+    const loadImages = async () => {
+      // 1. Try Loading Draft
+      const draftImgs = await get<string[]>('ws_bikes_images_draft');
+      if (draftImgs && draftImgs.length > 0) {
+        setSessionImages(draftImgs);
+      } else {
+        // 2. If draft empty, check History for today (to allow continuing work/editing)
+        const history = await get<HistoryEntry[]>('ws_history');
+        if (history) {
+          const todayStr = new Date().toDateString();
+          const todayEntry = history.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'bikes');
+          if (todayEntry && todayEntry.images) {
+            setSessionImages(todayEntry.images);
+          }
+        }
+      }
       setIsImagesLoaded(true);
-    });
+    };
+    loadImages();
   }, []);
 
   // Save images to IDB whenever they change (Auto-save draft)
@@ -79,39 +94,67 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       }
   };
 
-  const handleCopy = async () => {
-    let report = `${getTodayDateString()}\n`;
+  const handleShare = async () => {
+    triggerHaptic(settings.vibration);
+    
+    // 1. Generate Text Report (WhatsApp friendly format)
+    let report = `📅 *${getTodayDateString()}* - ${t.bikes}\n\n`;
     BIKE_CATEGORIES.forEach(cat => {
       const count = getCount(cat);
-      if (count > 0) report += `${cat}: ${count}\n`;
+      if (count > 0) report += `▪️ ${cat}: *${count}*\n`;
     });
+    
     if (Object.keys(counts).length === 0) report += "No data";
 
-    // 1. Copy to clipboard
-    const success = await copyToClipboard(report);
-    if (success) {
-      onShowToast(t.copied, 'success');
-    } else {
-      onShowToast('Copy failed, check permissions', 'error');
+    // 2. Prepare Data for History
+    const historyEntry: HistoryEntry = {
+      id: generateId(), 
+      date: new Date().toISOString(),
+      type: 'bikes',
+      summary: t.bikes,
+      details: counts,
+      images: [...sessionImages]
+    };
+
+    // 3. Save/Update History FIRST (Ensures data is saved even if share is cancelled)
+    if (Object.values(counts).some((v: number) => v > 0) || sessionImages.length > 0) {
+      onSaveHistory(historyEntry);
+      onShowToast(t.success, 'success');
     }
 
-    // 2. Always save to history if there is data, regardless of copy success
-    if (Object.values(counts).some((v: number) => v > 0) || sessionImages.length > 0) {
-      onSaveHistory({
-        id: generateId(),
-        date: new Date().toISOString(),
-        type: 'bikes',
-        summary: t.bikes,
-        details: counts,
-        images: [...sessionImages]
-      });
-      
-      // 3. Clear images after saving to prevent duplicates in next entry
-      setSessionImages([]);
-      // Clear IDB draft
-      del('ws_bikes_images_draft');
-      
-      if (!success) onShowToast(t.success, 'success');
+    // 4. Share Logic (Files + Text)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const filesArray = sessionImages.map((b64, idx) => 
+          base64ToFile(b64, `bike_${idx+1}.jpg`)
+        );
+
+        const shareData: ShareData = {
+          files: filesArray.length > 0 ? filesArray : undefined,
+          // Note: On many Android devices/WhatsApp, 'title' is ignored, 
+          // but 'text' becomes the image caption if files are attached.
+          title: 'Work Stats',
+          text: report, 
+        };
+
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+        } else {
+          // Fallback if files can't be shared but text can
+          await navigator.share({ title: 'Work Stats', text: report });
+          onShowToast('Shared text only (files not supported)', 'success');
+        }
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed', err);
+          await copyToClipboard(report);
+          onShowToast(t.copied + ' (Share failed)', 'error');
+        }
+      }
+    } else {
+      // Fallback for desktop/unsupported browsers
+      await copyToClipboard(report);
+      onShowToast(t.copied, 'success');
     }
   };
 
@@ -179,7 +222,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       </div>
 
       <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-3">
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <button
             onClick={handleCameraClick}
             className="bg-slate-700 hover:bg-slate-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-xl transition-transform active:scale-90 relative"
@@ -193,10 +236,11 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
           </button>
           
           <button
-            onClick={handleCopy}
-            className="bg-orange-500 hover:bg-orange-600 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/40 transition-transform active:scale-90"
+            onClick={handleShare}
+            className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-green-500/40 transition-transform active:scale-90 gap-2"
           >
-            <Copy size={28} />
+            <Share2 size={24} strokeWidth={2.5} />
+            <span className="font-bold text-lg">{t.share}</span>
           </button>
         </div>
       </div>
