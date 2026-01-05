@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Work Stats</title>
     <link rel="manifest" href="./manifest.json" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,6 +31,13 @@
         overscroll-behavior: none;
         height: 100%;
         overflow: hidden; /* Main scroll is handled by inner containers */
+      }
+      /* Safe Area Utilities for iOS PWA */
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
       }
     </style>
   <script type="importmap">
