@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1.18';
+const CACHE_NAME = 'work-stats-v1.19';
 // Only cache specific files. Removing './' prevents 404 errors on some servers
 const URLS_TO_CACHE = [
   './index.html',
