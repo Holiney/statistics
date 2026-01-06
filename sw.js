@@ -1,10 +1,9 @@
-const CACHE_NAME = 'work-stats-v1.20';
-// Cache local assets
+const CACHE_NAME = 'work-stats-v1.21';
+// Only precache the absolute essentials. 
+// DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
 const PRECACHE_URLS = [
-  './',
   './index.html',
-  './manifest.json',
-  './index.tsx'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -13,6 +12,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
+        // If any of these fail, the SW installation fails. Kept list minimal.
         return cache.addAll(PRECACHE_URLS);
       })
       .catch((err) => {
@@ -44,14 +44,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('./index.html') || caches.match('./');
+          return caches.match('./index.html');
         })
     );
     return;
   }
 
   // Strategy 2: External Dependencies (esm.sh, tailwind) - Stale While Revalidate
-  // This ensures libraries are cached for offline use
   if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com') {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -61,10 +60,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => {
-             // If offline and no cache, returns undefined which handled below
-             return undefined;
-          });
+          }).catch(() => undefined);
           return cachedResponse || fetchPromise;
         });
       })
@@ -72,7 +68,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Local Assets - Cache First, fallback to Network
+  // Strategy 3: Runtime Caching for everything else (including index.tsx)
+  // This prevents installation failure if a file is missing
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -81,7 +78,6 @@ self.addEventListener('fetch', (event) => {
         }
         
         return fetch(event.request).then((response) => {
-          // Check if we received a valid response
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }

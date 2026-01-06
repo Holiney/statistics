@@ -1,8 +1,8 @@
 {
   "name": "Work Stats",
   "short_name": "WorkStats",
-  "id": "work-stats-app-v1",
-  "start_url": "./",
+  "id": "work-stats-app-v1.21",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
@@ -10,13 +10,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEyMCcgZmlsbD0nIzBmMTcyYScvPjxwYXRoIGQ9J00xNDAgMzYwIFYgMjIwJyBzdHJva2U9JyMzYjgyZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00yNTYgMzYwIFYgMTYwJyBzdHJva2U9JyM4YjVjZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00zNzIgMzYwIFYgMjYwJyBzdHJva2U9JyNlYzQ4OTknIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjEwMCIgZmlsbD0iIzBmMTcyYSIvPjxwYXRoIGQ9Ik0xNTAgMzUwIFYgMjAwIiBzdHJva2U9IiMzYjgyZjYiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0yNTYgMzUwIFYgMTUwIiBzdHJva2U9IiM4YjVjZjYiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0zNjIgMzUwIFYgMjUwIiBzdHJva2U9IiNlYzQ4OTkiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEyMCcgZmlsbD0nIzBmMTcyYScvPjxwYXRoIGQ9J00xNDAgMzYwIFYgMjIwJyBzdHJva2U9JyMzYjgyZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00yNTYgMzYwIFYgMTYwJyBzdHJva2U9JyM4YjVjZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00zNzIgMzYwIFYgMjYwJyBzdHJva2U9JyNlYzQ4OTknIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjEwMCIgZmlsbD0iIzBmMTcyYSIvPjxwYXRoIGQ9Ik0xNTAgMzUwIFYgMjAwIiBzdHJva2U9IiMzYjgyZjYiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0yNTYgMzUwIFYgMTUwIiBzdHJva2U9IiM4YjVjZjYiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0zNjIgMzUwIFYgMjUwIiBzdHJva2U9IiNlYzQ4OTkiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
