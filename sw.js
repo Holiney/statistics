@@ -1,11 +1,9 @@
 const CACHE_NAME = 'work-stats-v1.25';
-// Only precache the absolute essentials.
+// Only precache the absolute essentials. 
 // DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
 const PRECACHE_URLS = [
   './index.html',
-  './manifest.json',
-  './icon-192x192.png',
-  './icon-512x512.png'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {

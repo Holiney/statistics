@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
@@ -16,6 +16,10 @@ interface Props {
 export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
   const t = TRANSLATIONS[settings.language];
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  
+  // Refs for repeat logic
+  const intervalRef = useRef<any>(null);
+  const timeoutRef = useRef<any>(null);
 
   // Fix: added explicit cast to handle potential unknown type issues in specific environments
   const getCount = (key: string) => (counts[key] as number) || 0;
@@ -28,6 +32,26 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       const newVal = Math.max(0, current + delta);
       return { ...prev, [activeZone]: newVal };
     });
+  };
+
+  const startRepeating = (delta: number) => {
+    // Fire immediately
+    handleAdjust(delta);
+    
+    // Clear any existing timers
+    stopRepeating();
+
+    // Set delay before rapid fire
+    timeoutRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        handleAdjust(delta);
+      }, 100); // 100ms repeat speed
+    }, 400); // 400ms delay before repeat starts
+  };
+
+  const stopRepeating = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
   const handleClear = () => {
@@ -129,37 +153,31 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         onClose={() => setActiveZone(null)}
         title={activeZone === 'parking' ? t.parking : activeZone || ''}
       >
-        <div className="flex flex-col gap-6 items-center pt-2 pb-6">
-          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter">
+        <div className="flex flex-col gap-6 items-center pt-4 pb-8">
+          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter select-none">
             {activeZone ? getCount(activeZone) : 0}
           </div>
           
           <div className="flex gap-4 w-full px-1">
             <button
-              onClick={() => handleAdjust(-1)}
-              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300"
+              onPointerDown={() => startRepeating(-1)}
+              onPointerUp={stopRepeating}
+              onPointerLeave={stopRepeating}
+              onContextMenu={(e) => e.preventDefault()}
+              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300 touch-none"
             >
               <Minus size={64} strokeWidth={3} className="opacity-80" />
             </button>
             <button
-              onClick={() => handleAdjust(1)}
-              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400"
+              onPointerDown={() => startRepeating(1)}
+              onPointerUp={stopRepeating}
+              onPointerLeave={stopRepeating}
+              onContextMenu={(e) => e.preventDefault()}
+              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400 touch-none"
             >
               <Plus size={64} strokeWidth={3} />
             </button>
           </div>
-
-           <div className="grid grid-cols-4 gap-3 w-full mt-2">
-             {[5, 10, 20, 50].map(val => (
-                <button 
-                  key={val}
-                  onClick={() => handleAdjust(val)}
-                  className="py-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-base font-black text-slate-600 dark:text-slate-400 active:scale-95 active:bg-blue-50 transition-all border border-slate-200 dark:border-slate-700"
-                >
-                  +{val}
-                </button>
-             ))}
-           </div>
         </div>
       </BottomSheet>
     </div>

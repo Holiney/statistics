@@ -21,6 +21,10 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   const [isImagesLoaded, setIsImagesLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Refs for repeat logic
+  const intervalRef = useRef<any>(null);
+  const timeoutRef = useRef<any>(null);
+
   // Load unsaved images from IDB on mount
   useEffect(() => {
     const loadImages = async () => {
@@ -62,6 +66,26 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       const newVal = Math.max(0, current + delta);
       return { ...prev, [activeCat]: newVal };
     });
+  };
+
+  const startRepeating = (delta: number) => {
+    // Fire immediately
+    handleAdjust(delta);
+    
+    // Clear any existing timers
+    stopRepeating();
+
+    // Set delay before rapid fire
+    timeoutRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        handleAdjust(delta);
+      }, 100); // 100ms repeat speed
+    }, 400); // 400ms delay before repeat starts
+  };
+
+  const stopRepeating = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
   const handleClearData = () => {
@@ -296,37 +320,31 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         onClose={() => setActiveCat(null)}
         title={activeCat || ''}
       >
-        <div className="flex flex-col gap-6 items-center pt-2 pb-6">
-          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter">
+        <div className="flex flex-col gap-6 items-center pt-4 pb-8">
+          <div className="text-8xl font-black font-mono text-slate-900 dark:text-white tracking-tighter select-none">
             {activeCat ? getCount(activeCat) : 0}
           </div>
           
           <div className="flex gap-4 w-full px-1">
             <button
-              onClick={() => handleAdjust(-1)}
-              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300"
+              onPointerDown={() => startRepeating(-1)}
+              onPointerUp={stopRepeating}
+              onPointerLeave={stopRepeating}
+              onContextMenu={(e) => e.preventDefault()}
+              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300 touch-none"
             >
               <Minus size={64} strokeWidth={3} className="opacity-80" />
             </button>
             <button
-              onClick={() => handleAdjust(1)}
-              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400"
+              onPointerDown={() => startRepeating(1)}
+              onPointerUp={stopRepeating}
+              onPointerLeave={stopRepeating}
+              onContextMenu={(e) => e.preventDefault()}
+              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400 touch-none"
             >
               <Plus size={64} strokeWidth={3} />
             </button>
           </div>
-
-           <div className="grid grid-cols-4 gap-3 w-full mt-2">
-             {[1, 5, 10, 20].map(val => (
-                <button 
-                  key={val}
-                  onClick={() => handleAdjust(val)}
-                  className="py-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-base font-black text-slate-600 dark:text-slate-400 active:scale-95 active:bg-blue-50 transition-all border border-slate-200 dark:border-slate-700"
-                >
-                  +{val}
-                </button>
-             ))}
-           </div>
         </div>
       </BottomSheet>
     </div>
