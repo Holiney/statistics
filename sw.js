@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1.23';
+const CACHE_NAME = 'work-stats-v1.24';
 // Only precache the absolute essentials. 
 // DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
 const PRECACHE_URLS = [
@@ -39,11 +39,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Strategy 1: Navigation (HTML) - Network First, fallback to Cache
+  // Strategy 1: Navigation (HTML) - Network First, fallback to Cache (SPA Support)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
+        .then((response) => {
+          // If the server returns 404 (common on some hosts for root URLs), return the cached index.html
+          if (!response || response.status === 404) {
+             return caches.match('./index.html');
+          }
+          return response;
+        })
         .catch(() => {
+          // Network failure (offline)
           return caches.match('./index.html');
         })
     );

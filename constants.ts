@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.23';
+export const APP_VERSION = 'v1.24';
 
 // --- Lists ---
 
