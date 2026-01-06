@@ -25,13 +25,23 @@
       * {
         -webkit-tap-highlight-color: transparent;
       }
+      
       /* STRICT Disable Pull-to-Refresh on mobile */
-      html, body, #root {
+      html, body {
         overscroll-behavior-y: none;
         overscroll-behavior: none;
         height: 100%;
-        overflow: hidden; /* Main scroll is handled by inner containers */
+        overflow: hidden; /* Prevent body scroll */
       }
+      
+      /* Correctly enable scroll on root while disabling overscroll effects */
+      #root {
+        height: 100%;
+        overflow-y: auto; /* ENABLE scroll */
+        overscroll-behavior-y: none; /* Stop Pull-to-Refresh propagation */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling iOS */
+      }
+
       /* Safe Area Utilities for iOS PWA */
       .pt-safe {
         padding-top: env(safe-area-inset-top);
@@ -55,7 +65,7 @@
 </script>
 </head>
   <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors duration-300 selection:bg-blue-500 selection:text-white">
-    <div id="root" class="h-full overflow-y-auto"></div>
+    <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
