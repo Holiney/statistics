@@ -11,17 +11,14 @@ if (container) {
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Fix for PWA installation in preview environments:
-    // Construct absolute URL based on current window location to prevent
-    // origin mismatch errors (e.g. ai.studio vs usercontent.goog)
-    const swUrl = new URL('sw.js', window.location.href).href;
-
-    navigator.serviceWorker.register(swUrl)
+    // Use standard relative path.
+    // Ensure sw.js is served from the same directory as index.html
+    navigator.serviceWorker.register('./sw.js')
       .then((registration) => {
-        console.log('SW registered: ', registration);
+        console.log('SW registered with scope:', registration.scope);
       })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
+        console.log('SW registration failed:', registrationError);
       });
   });
 }

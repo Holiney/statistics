@@ -1,8 +1,10 @@
-const CACHE_NAME = 'work-stats-v1.19';
-// Only cache specific files. Removing './' prevents 404 errors on some servers
-const URLS_TO_CACHE = [
+const CACHE_NAME = 'work-stats-v1.20';
+// Cache local assets
+const PRECACHE_URLS = [
+  './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './index.tsx'
 ];
 
 self.addEventListener('install', (event) => {
@@ -11,7 +13,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        return cache.addAll(URLS_TO_CACHE);
+        return cache.addAll(PRECACHE_URLS);
       })
       .catch((err) => {
         console.error('Cache install failed:', err);
@@ -35,18 +37,42 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Navigation request (HTML) - Network First, fallback to Cache
+  const url = new URL(event.request.url);
+
+  // Strategy 1: Navigation (HTML) - Network First, fallback to Cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('./index.html');
+          return caches.match('./index.html') || caches.match('./');
         })
     );
     return;
   }
 
-  // Asset request - Cache First, fallback to Network
+  // Strategy 2: External Dependencies (esm.sh, tailwind) - Stale While Revalidate
+  // This ensures libraries are cached for offline use
+  if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com') {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => {
+             // If offline and no cache, returns undefined which handled below
+             return undefined;
+          });
+          return cachedResponse || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Strategy 3: Local Assets - Cache First, fallback to Network
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -55,11 +81,11 @@ self.addEventListener('fetch', (event) => {
         }
         
         return fetch(event.request).then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
+          // Check if we received a valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
 
-          // Cache valid runtime requests
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);

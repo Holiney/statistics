@@ -1,14 +1,20 @@
 {
   "name": "Work Stats",
   "short_name": "WorkStats",
-  "id": "work-stats-app",
-  "start_url": "./index.html",
+  "id": "work-stats-app-v1",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEyMCcgZmlsbD0nIzBmMTcyYScvPjxwYXRoIGQ9J00xNDAgMzYwIFYgMjIwJyBzdHJva2U9JyMzYjgyZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00yNTYgMzYwIFYgMTYwJyBzdHJva2U9JyM4YjVjZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00zNzIgMzYwIFYgMjYwJyBzdHJva2U9JyNlYzQ4OTknIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEyMCcgZmlsbD0nIzBmMTcyYScvPjxwYXRoIGQ9J00xNDAgMzYwIFYgMjIwJyBzdHJva2U9JyMzYjgyZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00yNTYgMzYwIFYgMTYwJyBzdHJva2U9JyM4YjVjZjYnIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxwYXRoIGQ9J00zNzIgMzYwIFYgMjYwJyBzdHJva2U9JyNlYzQ4OTknIHN0cm9rZS13aWR0aD0nNDUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjwvc3ZnPg==",
       "sizes": "512x512",
