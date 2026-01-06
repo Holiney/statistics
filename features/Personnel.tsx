@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { UsersRound, Car, Copy, Minus, Plus } from 'lucide-react';
+import { UsersRound, Car, Copy, Minus, Plus, Trash2 } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
 
 interface Props {
@@ -28,6 +28,13 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       const newVal = Math.max(0, current + delta);
       return { ...prev, [activeZone]: newVal };
     });
+  };
+
+  const handleClear = () => {
+    if (window.confirm(t.confirmClear)) {
+      setCounts({});
+      onShowToast(t.dataCleared, 'success');
+    }
   };
 
   const handleCopy = async () => {
@@ -58,7 +65,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
   };
 
   return (
-    <div className="space-y-4 pb-32">
+    <div className="space-y-4 pb-32 relative">
       <div className="grid grid-cols-2 gap-4">
         <Card 
           onClick={() => setActiveZone('parking')}
@@ -97,7 +104,14 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         ))}
       </div>
 
-      <div className="flex justify-center w-full py-2">
+      <div className="flex justify-between items-center w-full py-2 px-1">
+        <button 
+          onClick={handleClear}
+          className="flex items-center gap-2 px-3 py-2 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all"
+        >
+          <Trash2 size={16} />
+          {t.clearData}
+        </button>
         <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono opacity-60">{APP_VERSION}</span>
       </div>
 

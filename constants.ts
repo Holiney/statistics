@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.22';
+export const APP_VERSION = 'v1.23';
 
 // --- Lists ---
 
@@ -89,6 +89,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     installDesc: 'Add to home screen for quick access',
     install: 'Install',
     later: 'Later',
+    clearData: 'Clear Data',
+    dataCleared: 'Data cleared'
   },
   ua: {
     personnel: 'Персонал',
@@ -127,6 +129,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     installDesc: 'Додати на головний екран',
     install: 'Встановити',
     later: 'Пізніше',
+    clearData: 'Очистити дані',
+    dataCleared: 'Дані очищено'
   },
   nl: {
     personnel: 'Personeel',
@@ -165,5 +169,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     installDesc: 'Toevoegen aan startscherm',
     install: 'Installeren',
     later: 'Later',
+    clearData: 'Gegevens wissen',
+    dataCleared: 'Gegevens gewist'
   }
 };

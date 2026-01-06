@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Bike, FileText, Minus, Plus, Camera, X, ImageIcon, Image as ImageIcon2 } from 'lucide-react';
+import { Bike, FileText, Minus, Plus, Camera, X, ImageIcon, Image as ImageIcon2, Trash2 } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage, base64ToFile } from '../utils';
 import { get, set } from 'idb-keyval';
 
@@ -62,6 +62,13 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       const newVal = Math.max(0, current + delta);
       return { ...prev, [activeCat]: newVal };
     });
+  };
+
+  const handleClearData = () => {
+    if (window.confirm(t.confirmClear)) {
+      setCounts({});
+      onShowToast(t.dataCleared, 'success');
+    }
   };
 
   const handleCameraClick = () => {
@@ -243,6 +250,16 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
         ))}
       </div>
 
+      <div className="flex justify-center w-full py-2">
+         <button 
+          onClick={handleClearData}
+          className="flex items-center gap-2 px-3 py-2 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all"
+        >
+          <Trash2 size={16} />
+          {t.clearData}
+        </button>
+      </div>
+
       <div className="fixed bottom-24 right-4 z-30 flex gap-3">
           <button
             onClick={handleCameraClick}
@@ -287,24 +304,24 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
           <div className="flex gap-4 w-full px-1">
             <button
               onClick={() => handleAdjust(-1)}
-              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 border border-transparent active:border-slate-300"
+              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300"
             >
               <Minus size={64} strokeWidth={3} className="opacity-80" />
             </button>
             <button
               onClick={() => handleAdjust(1)}
-              className="flex-1 h-40 rounded-3xl bg-orange-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30 active:scale-95 transition-all active:bg-orange-600 border border-transparent active:border-orange-400"
+              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400"
             >
               <Plus size={64} strokeWidth={3} />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 w-full mt-2">
-             {[5, 10].map(val => (
+           <div className="grid grid-cols-4 gap-3 w-full mt-2">
+             {[1, 5, 10, 20].map(val => (
                 <button 
                   key={val}
                   onClick={() => handleAdjust(val)}
-                  className="py-5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-xl font-black text-slate-600 dark:text-slate-400 active:scale-95 transition-all border border-slate-200 dark:border-slate-700"
+                  className="py-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl text-base font-black text-slate-600 dark:text-slate-400 active:scale-95 active:bg-blue-50 transition-all border border-slate-200 dark:border-slate-700"
                 >
                   +{val}
                 </button>

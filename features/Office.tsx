@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Card, BottomSheet, Button } from '../components/UI';
-import { OFFICE_ROOMS, LIMITED_ROOMS, OFFICE_ITEMS, LIMITED_OFFICE_ITEMS, OFFICE_ITEM_TYPES, TRANSLATIONS } from '../constants';
+import { OFFICE_ROOMS, LIMITED_ROOMS, OFFICE_ITEMS, LIMITED_OFFICE_ITEMS, OFFICE_ITEM_TYPES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { CloudUpload, ChevronRight, Check } from 'lucide-react';
+import { CloudUpload, ChevronRight, Check, Trash2 } from 'lucide-react';
 import { triggerHaptic, generateId } from '../utils';
 
 interface Props {
@@ -44,6 +44,13 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       }
     }));
     setSelectedItem(null); // Close item sheet
+  };
+
+  const handleClear = () => {
+    if (window.confirm(t.confirmClear)) {
+      setRoomData({});
+      onShowToast(t.dataCleared, 'success');
+    }
   };
 
   // Cloud Sync Handler
@@ -175,17 +182,30 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
   // If no room selected, show room list
   if (!selectedRoom) {
     return (
-      <div className="grid grid-cols-3 gap-3 pb-24">
-        <h2 className="col-span-3 text-lg font-semibold text-slate-500 mb-2">{t.selectRoom}</h2>
-        {OFFICE_ROOMS.map(room => (
-          <Card 
-            key={room} 
-            onClick={() => setSelectedRoom(room)}
-            className="flex items-center justify-center h-20 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
-          >
-            <span className="text-xl font-bold text-slate-700 dark:text-slate-200">{room}</span>
-          </Card>
-        ))}
+      <div className="space-y-4 pb-32">
+        <div className="grid grid-cols-3 gap-3">
+          <h2 className="col-span-3 text-lg font-semibold text-slate-500 mb-2">{t.selectRoom}</h2>
+          {OFFICE_ROOMS.map(room => (
+            <Card 
+              key={room} 
+              onClick={() => setSelectedRoom(room)}
+              className="flex items-center justify-center h-20 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+            >
+              <span className="text-xl font-bold text-slate-700 dark:text-slate-200">{room}</span>
+            </Card>
+          ))}
+        </div>
+        
+        <div className="flex justify-between items-center w-full py-4 px-1">
+            <button 
+            onClick={handleClear}
+            className="flex items-center gap-2 px-3 py-2 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all"
+            >
+            <Trash2 size={16} />
+            {t.clearData}
+            </button>
+            <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono opacity-60">{APP_VERSION}</span>
+        </div>
       </div>
     );
   }
