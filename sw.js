@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1.25';
+const CACHE_NAME = 'work-stats-v1.26';
 // Only precache the absolute essentials. 
 // DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
 const PRECACHE_URLS = [
@@ -58,8 +58,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 2: External Dependencies (esm.sh, tailwind) - Stale While Revalidate
-  if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com') {
+  // Strategy 2: External Dependencies (esm.sh, tailwind, telegram) - Stale While Revalidate
+  // Added telegram.org to this list
+  if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com' || url.hostname === 'telegram.org') {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {

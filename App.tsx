@@ -10,6 +10,7 @@ import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
 import { History } from './features/History';
 import { Settings } from './features/Settings';
+import { Login } from './components/Login'; // Import Login component
 import { Toast, Button } from './components/UI';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -24,6 +25,14 @@ const App: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   
+  // Auth State
+  const [user, setUser] = useState<TelegramUser | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('ws_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch { return null; }
+  });
+
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem('ws_settings');
@@ -35,15 +44,6 @@ const App: React.FC = () => {
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
-
-  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(() => {
-    try {
-      const saved = localStorage.getItem('ws_telegram_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
 
   // Initialize state from LocalStorage to persist data across app restarts
   const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>(() => {
@@ -92,6 +92,19 @@ const App: React.FC = () => {
 
   const handleInstallDismiss = () => {
     setShowInstallBanner(false);
+  };
+
+  // Handle Login
+  const handleLogin = (newUser: TelegramUser) => {
+    setUser(newUser);
+    localStorage.setItem('ws_user', JSON.stringify(newUser));
+  };
+
+  const handleLogout = () => {
+    if(window.confirm('Are you sure you want to logout?')) {
+      setUser(null);
+      localStorage.removeItem('ws_user');
+    }
   };
 
   // Handle Android Back Button & History Navigation
@@ -181,15 +194,6 @@ const App: React.FC = () => {
     }
   }, [history, isHistoryLoaded]);
 
-  // Persist Telegram User
-  useEffect(() => {
-    if (telegramUser) {
-      localStorage.setItem('ws_telegram_user', JSON.stringify(telegramUser));
-    } else {
-      localStorage.removeItem('ws_telegram_user');
-    }
-  }, [telegramUser]);
-
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
@@ -224,17 +228,20 @@ const App: React.FC = () => {
     setHistory([]);
   };
 
-  const handleTelegramAuth = (user: TelegramUser) => {
-    setTelegramUser(user);
-    showToast(t.success, 'success');
-  };
-
-  const handleTelegramLogout = () => {
-    setTelegramUser(null);
-    showToast(t.dataCleared, 'success');
-  };
-
   const t = TRANSLATIONS[settings.language];
+
+  // AUTH GATE: If no user, show Login Screen
+  if (!user) {
+    return (
+      <>
+        <Login onLogin={handleLogin} />
+        {/* Force Theme based on settings even in Login */}
+        <div className="hidden">
+           {settings.theme === 'dark' ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')}
+        </div>
+      </>
+    );
+  }
 
   const tabs = [
     { id: 'personnel', icon: UsersRound, label: t.personnel },
@@ -250,6 +257,10 @@ const App: React.FC = () => {
         <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
           Work Stats
         </h1>
+        {/* Tiny avatar in header */}
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700" onClick={() => setActiveTab('settings')}>
+           {user.photo_url ? <img src={user.photo_url} alt="me" /> : <div className="bg-blue-500 w-full h-full" />}
+        </div>
       </header>
 
       <main className="p-4 max-w-lg mx-auto min-h-[85vh]">
@@ -289,13 +300,11 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'settings' && (
-          <Settings
-            settings={settings}
-            updateSettings={updateSettings}
-            telegramUser={telegramUser}
-            onTelegramAuth={handleTelegramAuth}
-            onTelegramLogout={handleTelegramLogout}
-            onShowToast={showToast}
+          <Settings 
+             settings={settings} 
+             updateSettings={updateSettings} 
+             user={user}
+             onLogout={handleLogout}
           />
         )}
       </main>

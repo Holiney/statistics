@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.25';
+export const APP_VERSION = 'v1.26';
 
 // --- Lists ---
 
@@ -91,13 +91,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     later: 'Later',
     clearData: 'Clear Data',
     dataCleared: 'Data cleared',
-    telegramAuth: 'Telegram Authorization',
-    telegramLogin: 'Login with Telegram',
-    telegramLogout: 'Logout',
-    telegramBotUsername: 'Telegram Bot Username',
-    telegramBotPlaceholder: 'your_bot',
-    telegramLoggedIn: 'Logged in as',
-    telegramRequired: 'Bot username required'
+    login: 'Login with Telegram',
+    logout: 'Logout',
+    welcome: 'Welcome'
   },
   ua: {
     personnel: 'Персонал',
@@ -138,13 +134,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     later: 'Пізніше',
     clearData: 'Очистити дані',
     dataCleared: 'Дані очищено',
-    telegramAuth: 'Авторизація Telegram',
-    telegramLogin: 'Увійти через Telegram',
-    telegramLogout: 'Вийти',
-    telegramBotUsername: 'Username бота Telegram',
-    telegramBotPlaceholder: 'ваш_бот',
-    telegramLoggedIn: 'Ви увійшли як',
-    telegramRequired: 'Потрібен username бота'
+    login: 'Вхід через Telegram',
+    logout: 'Вийти',
+    welcome: 'Вітаємо'
   },
   nl: {
     personnel: 'Personeel',
@@ -185,12 +177,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     later: 'Later',
     clearData: 'Gegevens wissen',
     dataCleared: 'Gegevens gewist',
-    telegramAuth: 'Telegram Autorisatie',
-    telegramLogin: 'Inloggen met Telegram',
-    telegramLogout: 'Uitloggen',
-    telegramBotUsername: 'Telegram Bot Gebruikersnaam',
-    telegramBotPlaceholder: 'jouw_bot',
-    telegramLoggedIn: 'Ingelogd als',
-    telegramRequired: 'Bot gebruikersnaam vereist'
+    login: 'Login met Telegram',
+    logout: 'Uitloggen',
+    welcome: 'Welkom'
   }
 };
