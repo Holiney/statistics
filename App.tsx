@@ -3,7 +3,7 @@ import { UsersRound, Bike, Package, History as HistoryIcon, Settings as Settings
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { AppSettings, HistoryEntry, Tab } from './types';
+import { AppSettings, HistoryEntry, Tab, TelegramUser } from './types';
 import { TRANSLATIONS } from './constants';
 import { Personnel } from './features/Personnel';
 import { Bikes } from './features/Bikes';
@@ -35,6 +35,15 @@ const App: React.FC = () => {
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+
+  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('ws_telegram_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Initialize state from LocalStorage to persist data across app restarts
   const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>(() => {
@@ -172,6 +181,15 @@ const App: React.FC = () => {
     }
   }, [history, isHistoryLoaded]);
 
+  // Persist Telegram User
+  useEffect(() => {
+    if (telegramUser) {
+      localStorage.setItem('ws_telegram_user', JSON.stringify(telegramUser));
+    } else {
+      localStorage.removeItem('ws_telegram_user');
+    }
+  }, [telegramUser]);
+
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
@@ -204,6 +222,16 @@ const App: React.FC = () => {
 
   const clearHistory = () => {
     setHistory([]);
+  };
+
+  const handleTelegramAuth = (user: TelegramUser) => {
+    setTelegramUser(user);
+    showToast(t.success, 'success');
+  };
+
+  const handleTelegramLogout = () => {
+    setTelegramUser(null);
+    showToast(t.dataCleared, 'success');
   };
 
   const t = TRANSLATIONS[settings.language];
@@ -261,7 +289,14 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'settings' && (
-          <Settings settings={settings} updateSettings={updateSettings} />
+          <Settings
+            settings={settings}
+            updateSettings={updateSettings}
+            telegramUser={telegramUser}
+            onTelegramAuth={handleTelegramAuth}
+            onTelegramLogout={handleTelegramLogout}
+            onShowToast={showToast}
+          />
         )}
       </main>
 
