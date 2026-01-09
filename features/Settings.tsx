@@ -1,7 +1,7 @@
 import React from 'react';
 import { TRANSLATIONS } from '../constants';
 import { AppSettings, Language, TelegramUser } from '../types';
-import { Moon, Sun, Smartphone, Globe, Link, LogOut, User } from 'lucide-react';
+import { Moon, Sun, Smartphone, Globe, Link, LogOut, User, LogIn } from 'lucide-react';
 import { Card, Button } from '../components/UI';
 import { triggerHaptic } from '../utils';
 
@@ -43,15 +43,21 @@ export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onLo
               </div>
             )}
             <div>
-              <p className="font-bold text-slate-800 dark:text-white">{user?.first_name} {user?.last_name}</p>
-              {user?.username && <p className="text-xs text-blue-500">@{user.username}</p>}
+              <p className="font-bold text-slate-800 dark:text-white">
+                {user ? `${user.first_name} ${user.last_name || ''}` : t.guest}
+              </p>
+              {user?.username ? (
+                <p className="text-xs text-blue-500">@{user.username}</p>
+              ) : (
+                <p className="text-xs text-orange-500">{t.loginToSync}</p>
+              )}
             </div>
           </div>
           <button 
              onClick={onLogout}
-             className="p-2 bg-red-50 dark:bg-red-900/20 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+             className={`p-2 rounded-full transition-colors ${user ? 'bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40'}`}
           >
-             <LogOut size={20} />
+             {user ? <LogOut size={20} /> : <LogIn size={20} />}
           </button>
         </Card>
       </section>

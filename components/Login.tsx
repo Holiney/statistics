@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 
 interface Props {
   onLogin: (user: TelegramUser) => void;
+  onSkip: () => void;
 }
 
-export const Login: React.FC<Props> = ({ onLogin }) => {
+export const Login: React.FC<Props> = ({ onLogin, onSkip }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,9 +60,18 @@ export const Login: React.FC<Props> = ({ onLogin }) => {
           {/* Telegram widget will be injected here */}
         </div>
         
-        <p className="mt-8 text-xs text-slate-400">
-           By logging in, you allow the app to identify you in statistics reports.
-        </p>
+        <div className="mt-8 flex flex-col gap-4">
+           <button 
+             onClick={onSkip}
+             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold uppercase tracking-wider transition-colors py-2"
+           >
+             Skip / Continue as Guest
+           </button>
+           
+           <p className="text-[10px] text-slate-400 opacity-60">
+              By logging in, you allow the app to identify you in statistics reports.
+           </p>
+        </div>
       </motion.div>
     </div>
   );

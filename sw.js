@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1.26';
+const CACHE_NAME = 'work-stats-v1.27';
 // Only precache the absolute essentials. 
 // DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
 const PRECACHE_URLS = [

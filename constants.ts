@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.26';
+export const APP_VERSION = 'v1.27';
 
 // --- Lists ---
 
@@ -93,7 +93,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dataCleared: 'Data cleared',
     login: 'Login with Telegram',
     logout: 'Logout',
-    welcome: 'Welcome'
+    welcome: 'Welcome',
+    skip: 'Skip',
+    guest: 'Guest User',
+    loginToSync: 'Login to sync data'
   },
   ua: {
     personnel: 'Персонал',
@@ -136,7 +139,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dataCleared: 'Дані очищено',
     login: 'Вхід через Telegram',
     logout: 'Вийти',
-    welcome: 'Вітаємо'
+    welcome: 'Вітаємо',
+    skip: 'Пропустити',
+    guest: 'Гість',
+    loginToSync: 'Увійдіть для синхронізації'
   },
   nl: {
     personnel: 'Personeel',
@@ -179,6 +185,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dataCleared: 'Gegevens gewist',
     login: 'Login met Telegram',
     logout: 'Uitloggen',
-    welcome: 'Welkom'
+    welcome: 'Welkom',
+    skip: 'Overslaan',
+    guest: 'Gastgebruiker',
+    loginToSync: 'Log in om te synchroniseren'
   }
 };

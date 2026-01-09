@@ -33,6 +33,12 @@ const App: React.FC = () => {
     } catch { return null; }
   });
 
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ws_is_guest') === 'true';
+    } catch { return false; }
+  });
+
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem('ws_settings');
@@ -97,13 +103,29 @@ const App: React.FC = () => {
   // Handle Login
   const handleLogin = (newUser: TelegramUser) => {
     setUser(newUser);
+    setIsGuest(false);
     localStorage.setItem('ws_user', JSON.stringify(newUser));
+    localStorage.removeItem('ws_is_guest');
   };
 
-  const handleLogout = () => {
-    if(window.confirm('Are you sure you want to logout?')) {
-      setUser(null);
-      localStorage.removeItem('ws_user');
+  const handleSkipLogin = () => {
+    setIsGuest(true);
+    localStorage.setItem('ws_is_guest', 'true');
+  };
+
+  const handleLogoutOrLogin = () => {
+    if (user) {
+        if(window.confirm('Are you sure you want to logout?')) {
+            setUser(null);
+            localStorage.removeItem('ws_user');
+            // When logging out, we also reset guest mode so the login screen appears
+            setIsGuest(false); 
+            localStorage.removeItem('ws_is_guest');
+        }
+    } else {
+        // If guest, "Logout" essentially means "Go to Login Screen"
+        setIsGuest(false);
+        localStorage.removeItem('ws_is_guest');
     }
   };
 
@@ -230,11 +252,11 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[settings.language];
 
-  // AUTH GATE: If no user, show Login Screen
-  if (!user) {
+  // AUTH GATE: If no user AND not a guest, show Login Screen
+  if (!user && !isGuest) {
     return (
       <>
-        <Login onLogin={handleLogin} />
+        <Login onLogin={handleLogin} onSkip={handleSkipLogin} />
         {/* Force Theme based on settings even in Login */}
         <div className="hidden">
            {settings.theme === 'dark' ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')}
@@ -258,8 +280,12 @@ const App: React.FC = () => {
           Work Stats
         </h1>
         {/* Tiny avatar in header */}
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700" onClick={() => setActiveTab('settings')}>
-           {user.photo_url ? <img src={user.photo_url} alt="me" /> : <div className="bg-blue-500 w-full h-full" />}
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer" onClick={() => setActiveTab('settings')}>
+           {user?.photo_url ? (
+             <img src={user.photo_url} alt="me" /> 
+           ) : (
+             <UsersRound size={16} className="text-slate-400" />
+           )}
         </div>
       </header>
 
@@ -304,7 +330,7 @@ const App: React.FC = () => {
              settings={settings} 
              updateSettings={updateSettings} 
              user={user}
-             onLogout={handleLogout}
+             onLogout={handleLogoutOrLogin}
           />
         )}
       </main>
