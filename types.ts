@@ -1,11 +1,22 @@
 export type Language = 'ua' | 'en' | 'nl';
 export type Theme = 'light' | 'dark';
 
+export interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
 export interface AppSettings {
   language: Language;
   theme: Theme;
   vibration: boolean;
   webhookUrl: string;
+  telegramBotUsername?: string;
 }
 
 export type Tab = 'personnel' | 'bikes' | 'office' | 'history' | 'settings';

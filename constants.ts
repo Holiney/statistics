@@ -90,7 +90,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     install: 'Install',
     later: 'Later',
     clearData: 'Clear Data',
-    dataCleared: 'Data cleared'
+    dataCleared: 'Data cleared',
+    telegramAuth: 'Telegram Authorization',
+    telegramLogin: 'Login with Telegram',
+    telegramLogout: 'Logout',
+    telegramBotUsername: 'Telegram Bot Username',
+    telegramBotPlaceholder: 'your_bot',
+    telegramLoggedIn: 'Logged in as',
+    telegramRequired: 'Bot username required'
   },
   ua: {
     personnel: 'Персонал',
@@ -130,7 +137,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     install: 'Встановити',
     later: 'Пізніше',
     clearData: 'Очистити дані',
-    dataCleared: 'Дані очищено'
+    dataCleared: 'Дані очищено',
+    telegramAuth: 'Авторизація Telegram',
+    telegramLogin: 'Увійти через Telegram',
+    telegramLogout: 'Вийти',
+    telegramBotUsername: 'Username бота Telegram',
+    telegramBotPlaceholder: 'ваш_бот',
+    telegramLoggedIn: 'Ви увійшли як',
+    telegramRequired: 'Потрібен username бота'
   },
   nl: {
     personnel: 'Personeel',
@@ -170,6 +184,13 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     install: 'Installeren',
     later: 'Later',
     clearData: 'Gegevens wissen',
-    dataCleared: 'Gegevens gewist'
+    dataCleared: 'Gegevens gewist',
+    telegramAuth: 'Telegram Autorisatie',
+    telegramLogin: 'Inloggen met Telegram',
+    telegramLogout: 'Uitloggen',
+    telegramBotUsername: 'Telegram Bot Gebruikersnaam',
+    telegramBotPlaceholder: 'jouw_bot',
+    telegramLoggedIn: 'Ingelogd als',
+    telegramRequired: 'Bot gebruikersnaam vereist'
   }
 };
