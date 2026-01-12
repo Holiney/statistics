@@ -11,9 +11,11 @@ if (container) {
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Use standard relative path.
-    // Ensure sw.js is served from the same directory as index.html
-    navigator.serviceWorker.register('./sw.js')
+    // Force absolute URL resolution relative to window.location to prevent "Origin mismatch" errors
+    // in environments where path resolution or bundlers might interfere with relative paths.
+    const swUrl = new URL('./sw.js', window.location.href).href;
+
+    navigator.serviceWorker.register(swUrl)
       .then((registration) => {
         console.log('SW registered with scope:', registration.scope);
       })
