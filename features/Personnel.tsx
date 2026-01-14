@@ -109,23 +109,31 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
           </div>
         </Card>
 
-        {ZONES.map(zone => (
-          <Card 
-            key={zone} 
-            onClick={() => setActiveZone(zone)}
-            className="flex flex-col justify-between h-36 active:bg-blue-50 dark:active:bg-blue-900/10 p-5 hover:border-blue-300 dark:hover:border-blue-800 transition-all border-slate-200 dark:border-slate-800"
-          >
-            <div className="flex justify-between items-start">
-              <span className="font-bold text-slate-400 dark:text-slate-500 text-xs uppercase tracking-wider">{zone}</span>
-              <UsersRound size={20} className="text-blue-500/40" />
-            </div>
-            <div className="text-right">
-              <span className="text-4xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">
-                {getCount(zone)}
-              </span>
-            </div>
-          </Card>
-        ))}
+        {ZONES.map(zone => {
+          const count = getCount(zone);
+          const isActive = count > 0;
+          return (
+            <Card 
+              key={zone} 
+              onClick={() => setActiveZone(zone)}
+              className={`flex flex-col justify-between h-36 active:bg-blue-50 dark:active:bg-blue-900/10 p-5 hover:border-blue-300 dark:hover:border-blue-800 transition-all ${
+                isActive 
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md shadow-blue-500/10' 
+                  : 'border-slate-200 dark:border-slate-800'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <span className={`font-bold text-xs uppercase tracking-wider ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}`}>{zone}</span>
+                <UsersRound size={20} className={isActive ? 'text-blue-600' : 'text-blue-500/40'} />
+              </div>
+              <div className="text-right">
+                <span className={`text-4xl font-black font-mono tracking-tighter ${isActive ? 'text-blue-700 dark:text-blue-100' : 'text-slate-900 dark:text-white'}`}>
+                  {count}
+                </span>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="flex justify-between items-center w-full py-2 px-1">

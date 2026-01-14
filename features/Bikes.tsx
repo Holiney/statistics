@@ -255,23 +255,31 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       )}
 
       <div className="grid grid-cols-1 gap-4">
-        {BIKE_CATEGORIES.map(cat => (
-          <Card 
-            key={cat} 
-            onClick={() => setActiveCat(cat)}
-            className="flex justify-between items-center py-6 px-6 active:bg-orange-50 dark:active:bg-orange-900/10 hover:border-orange-300 transition-all shadow-sm"
-          >
-            <div className="flex items-center gap-5">
-               <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-2xl">
-                 <Bike size={24} />
-               </div>
-               <span className="font-bold text-lg text-slate-800 dark:text-slate-200">{cat}</span>
-            </div>
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">
-              {getCount(cat)}
-            </span>
-          </Card>
-        ))}
+        {BIKE_CATEGORIES.map(cat => {
+          const count = getCount(cat);
+          const isActive = count > 0;
+          return (
+            <Card 
+              key={cat} 
+              onClick={() => setActiveCat(cat)}
+              className={`flex justify-between items-center py-6 px-6 active:bg-orange-50 dark:active:bg-orange-900/10 hover:border-orange-300 transition-all shadow-sm ${
+                isActive 
+                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 shadow-orange-500/10' 
+                  : 'border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-5">
+                 <div className={`p-3 rounded-2xl ${isActive ? 'bg-orange-200 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'}`}>
+                   <Bike size={24} />
+                 </div>
+                 <span className={`font-bold text-lg ${isActive ? 'text-orange-900 dark:text-orange-100' : 'text-slate-800 dark:text-slate-200'}`}>{cat}</span>
+              </div>
+              <span className={`text-3xl font-black font-mono tracking-tighter ${isActive ? 'text-orange-600 dark:text-orange-400' : 'text-slate-900 dark:text-white'}`}>
+                {count}
+              </span>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="flex justify-center w-full py-2">

@@ -10,8 +10,9 @@ import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
 import { History } from './features/History';
 import { Settings } from './features/Settings';
-import { Login } from './components/Login'; // Import Login component
+import { Login } from './components/Login'; 
 import { Toast, Button } from './components/UI';
+import { getISOWeek } from './utils';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -51,24 +52,60 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
-  // Initialize state from LocalStorage to persist data across app restarts
+  // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
+
+  // Personnel: Daily Reset
   const [personnelCounts, setPersonnelCounts] = useState<Record<string, number>>(() => {
     try {
+      const today = new Date().toDateString();
+      const lastActiveDate = localStorage.getItem('ws_last_daily_date');
+      
+      // If dates differ, return empty (reset). Otherwise load draft.
+      if (lastActiveDate !== today) {
+        return {};
+      }
       return JSON.parse(localStorage.getItem('ws_personnel_draft') || '{}');
     } catch { return {}; }
   });
 
+  // Bikes: Daily Reset
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>(() => {
     try {
+      const today = new Date().toDateString();
+      const lastActiveDate = localStorage.getItem('ws_last_daily_date');
+      
+      if (lastActiveDate !== today) {
+        // Also clear bike images if date changed
+        get<string[]>('ws_bikes_images_draft').then(() => set('ws_bikes_images_draft', []));
+        return {};
+      }
       return JSON.parse(localStorage.getItem('ws_bikes_draft') || '{}');
     } catch { return {}; }
   });
 
+  // Office: Weekly Reset
   const [officeData, setOfficeData] = useState<Record<string, Record<string, number | string>>>(() => {
     try {
+      const currentWeek = getISOWeek().toString();
+      const lastActiveWeek = localStorage.getItem('ws_last_weekly_week');
+      
+      if (lastActiveWeek !== currentWeek) {
+        return {};
+      }
       return JSON.parse(localStorage.getItem('ws_office_draft') || '{}');
     } catch { return {}; }
   });
+
+  // Update timestamps immediately after mount
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const currentWeek = getISOWeek().toString();
+    
+    localStorage.setItem('ws_last_daily_date', today);
+    localStorage.setItem('ws_last_weekly_week', currentWeek);
+  }, []);
+
+  // --- END AUTO CLEAR LOGIC ---
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error'; visible: boolean }>({
     msg: '', type: 'success', visible: false
@@ -79,7 +116,6 @@ const App: React.FC = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
-      // Wait a moment before showing the banner to not overwhelm the user immediately
       setTimeout(() => setShowInstallBanner(true), 2000);
     };
     window.addEventListener('beforeinstallprompt', handler);
@@ -118,12 +154,10 @@ const App: React.FC = () => {
         if(window.confirm('Are you sure you want to logout?')) {
             setUser(null);
             localStorage.removeItem('ws_user');
-            // When logging out, we also reset guest mode so the login screen appears
             setIsGuest(false); 
             localStorage.removeItem('ws_is_guest');
         }
     } else {
-        // If guest, "Logout" essentially means "Go to Login Screen"
         setIsGuest(false);
         localStorage.removeItem('ws_is_guest');
     }
@@ -161,17 +195,8 @@ const App: React.FC = () => {
         const historyList = data || [];
         setHistory(historyList);
         
-        const todayStr = new Date().toDateString();
-        
-        const todayPersonnel = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'personnel');
-        if (todayPersonnel && Object.keys(JSON.parse(localStorage.getItem('ws_personnel_draft') || '{}')).length === 0) {
-          setPersonnelCounts(todayPersonnel.details);
-        }
-
-        const todayBikes = historyList.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'bikes');
-        if (todayBikes && Object.keys(JSON.parse(localStorage.getItem('ws_bikes_draft') || '{}')).length === 0) {
-          setBikeCounts(todayBikes.details);
-        }
+        // Logic to restore today's history to draft if draft was empty but history exists
+        // (Skipped here to prioritize the auto-clear logic, preventing accidental restoration of old data)
 
       } catch (err) {
         console.error('Failed to load history', err);
@@ -252,12 +277,10 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[settings.language];
 
-  // AUTH GATE: If no user AND not a guest, show Login Screen
   if (!user && !isGuest) {
     return (
       <>
         <Login onLogin={handleLogin} onSkip={handleSkipLogin} />
-        {/* Force Theme based on settings even in Login */}
         <div className="hidden">
            {settings.theme === 'dark' ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')}
         </div>
@@ -279,7 +302,6 @@ const App: React.FC = () => {
         <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
           Work Stats
         </h1>
-        {/* Tiny avatar in header */}
         <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer" onClick={() => setActiveTab('settings')}>
            {user?.photo_url ? (
              <img src={user.photo_url} alt="me" /> 
@@ -360,7 +382,6 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* PWA Install Banner */}
       <AnimatePresence>
         {showInstallBanner && installPrompt && (
           <motion.div

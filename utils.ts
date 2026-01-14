@@ -2,6 +2,14 @@ export const getTodayDateString = () => {
   return new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY format preference
 };
 
+export const getISOWeek = (date: Date = new Date()) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+};
+
 export const triggerHaptic = (enabled: boolean) => {
   if (enabled && typeof navigator !== 'undefined' && navigator.vibrate) {
     // Increased to 50ms as some Android devices ignore very short pulses (<20ms)

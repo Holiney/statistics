@@ -158,6 +158,9 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
             numbers = [0, 1, 2, 3, 4, 5];
     }
 
+    // Filter out 0 (Req: Remove 0 from grid, start from 1)
+    numbers = numbers.filter(n => n !== 0);
+
     return (
       <div className={`grid ${gridCols} gap-3 p-2`}>
         <button 
@@ -185,15 +188,22 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       <div className="space-y-4 pb-32">
         <div className="grid grid-cols-3 gap-3">
           <h2 className="col-span-3 text-lg font-semibold text-slate-500 mb-2">{t.selectRoom}</h2>
-          {OFFICE_ROOMS.map(room => (
-            <Card 
-              key={room} 
-              onClick={() => setSelectedRoom(room)}
-              className="flex items-center justify-center h-20 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
-            >
-              <span className="text-xl font-bold text-slate-700 dark:text-slate-200">{room}</span>
-            </Card>
-          ))}
+          {OFFICE_ROOMS.map(room => {
+             const hasData = roomData[room] && Object.keys(roomData[room]).length > 0;
+             return (
+              <Card 
+                key={room} 
+                onClick={() => setSelectedRoom(room)}
+                className={`flex items-center justify-center h-20 transition-all ${
+                  hasData 
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-indigo-500/10'
+                    : 'hover:border-blue-500 dark:hover:border-blue-400'
+                }`}
+              >
+                <span className={`text-xl font-bold ${hasData ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-200'}`}>{room}</span>
+              </Card>
+             );
+          })}
         </div>
         
         <div className="flex justify-between items-center w-full py-4 px-1">
@@ -229,10 +239,10 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
              <div 
                 key={item}
                 onClick={() => setSelectedItem(item)}
-                className={`p-4 rounded-xl flex justify-between items-center cursor-pointer transition-colors border ${isSet ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-slate-800 border-transparent'}`}
+                className={`p-4 rounded-xl flex justify-between items-center cursor-pointer transition-colors border ${isSet ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-slate-800 border-transparent'}`}
              >
-                <span className="font-medium text-slate-700 dark:text-slate-300">{item}</span>
-                <span className={`font-mono font-bold ${isSet ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+                <span className={`font-medium ${isSet ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-700 dark:text-slate-300'}`}>{item}</span>
+                <span className={`font-mono font-bold ${isSet ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
                   {val}
                 </span>
              </div>
