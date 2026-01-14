@@ -182,6 +182,60 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     );
   };
 
+  // --- Layout Helper Components ---
+
+  const Cell: React.FC<{ item: string; label?: string; className?: string; style?: React.CSSProperties }> = ({ item, label, className = '', style }) => {
+    // If this item is not in the allowed list for this room, do not render it (invisible)
+    if (!availableItems.includes(item)) {
+        return <div className={`invisible ${className}`} style={style} />;
+    }
+
+    const val = getValue(selectedRoom!, item);
+    const isSet = val !== '-';
+    
+    return (
+      <div 
+        onClick={() => setSelectedItem(item)}
+        style={style}
+        className={`relative flex items-center justify-center p-1 rounded-lg border cursor-pointer transition-all active:scale-95 flex-1 min-h-[50px] ${
+          isSet 
+            ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-500 shadow-sm' 
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+        } ${className}`}
+      >
+        {label && (
+          <span className="absolute top-1 left-1.5 text-[9px] font-extrabold text-slate-400 dark:text-slate-500">
+            {label}
+          </span>
+        )}
+        <span className={`font-mono font-black text-sm ${isSet ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-600'}`}>
+          {val}
+        </span>
+      </div>
+    );
+  };
+
+  const MatrixColumnExplicit: React.FC<{ 
+      label: string; 
+      slots: Array<{ key: string; label: string; flex: number }>;
+  }> = ({ label, slots }) => (
+      <div className="flex flex-col h-full bg-slate-100/50 dark:bg-slate-800/30 rounded-xl p-1 border border-slate-200/60 dark:border-slate-700/60">
+          <div className="flex flex-col flex-1 gap-1">
+             {slots.map((slot) => (
+                <Cell 
+                    key={slot.key} 
+                    item={slot.key} 
+                    label={slot.label} 
+                    style={{ flexGrow: slot.flex }}
+                />
+             ))}
+          </div>
+          <div className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider py-1.5">
+              {label}
+          </div>
+      </div>
+  );
+
   // If no room selected, show room list
   if (!selectedRoom) {
     return (
@@ -220,35 +274,106 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     );
   }
 
+  // Check if we should show the top sections (EK 1-12)
+  const showTopSections = availableItems.some(i => i.startsWith('EK 1') || i.startsWith('EK 7'));
+
   // Room View
   return (
-    <div className="space-y-4 pb-32">
-       <div className="flex items-center gap-2 mb-4">
-         <button onClick={() => setSelectedRoom(null)} className="text-slate-400 hover:text-slate-600">
+    <div className="space-y-6 pb-32">
+       <div className="flex items-center gap-2 mb-2">
+         <button onClick={() => setSelectedRoom(null)} className="text-slate-400 hover:text-slate-600 active:scale-95 transition-transform">
             {t.office}
          </button>
          <ChevronRight size={16} className="text-slate-400" />
          <span className="font-bold text-xl text-slate-800 dark:text-white">Room {selectedRoom}</span>
        </div>
 
-       <div className="space-y-2">
-         {availableItems.map(item => {
-           const val = getValue(selectedRoom, item);
-           const isSet = val !== '-';
-           return (
-             <div 
-                key={item}
-                onClick={() => setSelectedItem(item)}
-                className={`p-4 rounded-xl flex justify-between items-center cursor-pointer transition-colors border ${isSet ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-slate-800 border-transparent'}`}
-             >
-                <span className={`font-medium ${isSet ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-700 dark:text-slate-300'}`}>{item}</span>
-                <span className={`font-mono font-bold ${isSet ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
-                  {val}
-                </span>
-             </div>
-           );
-         })}
+       {/* --- Row 1: EK1 - EK6 --- */}
+       {showTopSections && (
+           <div className="grid grid-cols-6 gap-2">
+               {['EK 1', 'EK 2', 'EK 3', 'EK 4', 'EK 5', 'EK 6'].map(item => (
+                   <Cell key={item} item={item} label={item.replace('EK ', '')} className="h-14" />
+               ))}
+           </div>
+       )}
+
+       {/* --- Row 2: Matrix EK7 - EK12 --- */}
+       {/* 
+           Layout Strategy: 
+           Total height units per column = 3.
+           EK7-9: 1 unit each (C, B, A).
+           EK10-11: B takes 2 units, A takes 1 unit.
+           EK12: Item takes 3 units.
+       */}
+       {showTopSections && (
+           <div className="grid grid-cols-6 gap-2 items-stretch h-[240px]">
+               {/* EK 7 */}
+               <MatrixColumnExplicit 
+                   label="EK7" 
+                   slots={[
+                       { key: 'EK 7 C', label: 'C', flex: 1 },
+                       { key: 'EK 7 B', label: 'B', flex: 1 },
+                       { key: 'EK 7 A', label: 'A', flex: 1 }
+                   ]}
+               />
+               {/* EK 8 */}
+               <MatrixColumnExplicit 
+                   label="EK8" 
+                   slots={[
+                       { key: 'EK 8 C', label: 'C', flex: 1 },
+                       { key: 'EK 8 B', label: 'B', flex: 1 },
+                       { key: 'EK 8 A', label: 'A', flex: 1 }
+                   ]}
+               />
+               {/* EK 9 */}
+               <MatrixColumnExplicit 
+                   label="EK9" 
+                   slots={[
+                       { key: 'EK 9 C', label: 'C', flex: 1 },
+                       { key: 'EK 9 B', label: 'B', flex: 1 },
+                       { key: 'EK 9 A', label: 'A', flex: 1 }
+                   ]}
+               />
+               {/* EK 10 (B stretches to cover top 2/3, A covers bottom 1/3) */}
+               <MatrixColumnExplicit 
+                   label="EK10" 
+                   slots={[
+                       { key: 'EK 10 B', label: 'B', flex: 2 },
+                       { key: 'EK 10 A', label: 'A', flex: 1 }
+                   ]}
+               />
+               {/* EK 11 (B stretches to cover top 2/3, A covers bottom 1/3) */}
+               <MatrixColumnExplicit 
+                   label="EK11" 
+                   slots={[
+                       { key: 'EK 11 B', label: 'B', flex: 2 },
+                       { key: 'EK 11 A', label: 'A', flex: 1 }
+                   ]}
+               />
+               {/* EK 12 (Stretches full height) */}
+               <MatrixColumnExplicit 
+                   label="EK12" 
+                   slots={[
+                       { key: 'EK 12', label: '', flex: 3 }
+                   ]}
+               />
+           </div>
+       )}
+
+       {/* --- Row 3: EK13 - EK16 --- */}
+       <div className="grid grid-cols-4 gap-2">
+           {['EK 13', 'EK 14', 'EK 15', 'EK 16'].map(item => (
+               <Cell key={item} item={item} label={item.replace(' ', '')} />
+           ))}
        </div>
+
+       {/* --- Row 4: EK17 - EK19 --- */}
+       <div className="grid grid-cols-3 gap-2">
+           {['EK 17', 'EK 18', 'EK 19'].map(item => (
+               <Cell key={item} item={item} label={item.replace(' ', '')} />
+           ))}
+       </div>
+
 
        {/* Floating Action Button for Cloud Sync */}
        <div className="fixed bottom-24 right-4 left-4 z-30">
