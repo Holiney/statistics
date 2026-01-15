@@ -1,13 +1,12 @@
-const CACHE_NAME = 'work-stats-v1.38';
+const CACHE_NAME = 'work-stats-v1.40';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Try to cache these individually. 
-      // If one fails (e.g. 404), log it but don't crash the whole SW installation.
+      // Only cache index.html and manifest explicitly.
+      // Do NOT cache './' as it causes 404s on some hosting environments.
       const urlsToCache = [
-        './', 
         './index.html',
         './manifest.json'
       ];
@@ -59,11 +58,8 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Network failure (offline).
-          // Try to match the exact request first.
-          // Fallback to index.html or root if offline.
-          return caches.match(event.request)
-            .then(response => response || caches.match('./index.html'))
-            .then(response => response || caches.match('./'));
+          // Fallback to index.html for ANY navigation request (SPA routing)
+          return caches.match('./index.html');
         })
     );
     return;

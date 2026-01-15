@@ -1,8 +1,8 @@
 {
   "name": "Work Stats",
   "short_name": "WorkStats",
-  "id": "work-stats-app-v1.38",
-  "start_url": ".",
+  "id": "work-stats-app-v1.40",
+  "start_url": "./index.html",
   "scope": ".",
   "display": "standalone",
   "background_color": "#0f172a",
