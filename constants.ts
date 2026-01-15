@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.32';
+export const APP_VERSION = 'v1.36';
 
 // --- Lists ---
 
@@ -9,8 +9,15 @@ export const ZONES = [
 ];
 
 export const BIKE_CATEGORIES = [
-  'Kinderzitje', 'Buitenformaat', 'Op te hangen', 'Op te laden', 
-  'Steps', 'Standaardfietsen', 'MPA', 'MV', '6A'
+  'Kinderzitje', 
+  'Buitenformaat', 
+  'Standaardfietsen', 
+  'Op te hangen', 
+  'Op te laden', 
+  'Steps', 
+  'MPA', 
+  'MV', 
+  '6A'
 ];
 
 export const OFFICE_ROOMS = [

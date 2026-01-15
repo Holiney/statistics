@@ -184,7 +184,13 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
   // --- Layout Helper Components ---
 
-  const Cell: React.FC<{ item: string; label?: string; className?: string; style?: React.CSSProperties }> = ({ item, label, className = '', style }) => {
+  const Cell: React.FC<{ 
+      item: string; 
+      label?: string; 
+      className?: string; 
+      style?: React.CSSProperties;
+      forceSquare?: boolean;
+  }> = ({ item, label, className = '', style, forceSquare }) => {
     // If this item is not in the allowed list for this room, do not render it (invisible)
     if (!availableItems.includes(item)) {
         return <div className={`invisible ${className}`} style={style} />;
@@ -197,7 +203,9 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       <div 
         onClick={() => setSelectedItem(item)}
         style={style}
-        className={`relative flex items-center justify-center p-1 rounded-lg border cursor-pointer transition-all active:scale-95 flex-1 min-h-[50px] ${
+        className={`relative flex items-center justify-center p-1 rounded-lg border cursor-pointer transition-all active:scale-95 w-full !min-h-0 ${
+          forceSquare ? 'aspect-square' : ''
+        } ${
           isSet 
             ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-500 shadow-sm' 
             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400'
@@ -217,7 +225,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
   const MatrixColumnExplicit: React.FC<{ 
       label: string; 
-      slots: Array<{ key: string; label: string; flex: number }>;
+      slots: Array<{ key: string; label: string; flex: number; square?: boolean }>;
   }> = ({ label, slots }) => (
       <div className="flex flex-col h-full bg-slate-100/50 dark:bg-slate-800/30 rounded-xl p-1 border border-slate-200/60 dark:border-slate-700/60">
           <div className="flex flex-col flex-1 gap-1">
@@ -227,6 +235,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
                     item={slot.key} 
                     label={slot.label} 
                     style={{ flexGrow: slot.flex }}
+                    forceSquare={slot.square}
                 />
              ))}
           </div>
@@ -300,38 +309,37 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
        {/* --- Row 2: Matrix EK7 - EK12 --- */}
        {/* 
            Layout Strategy: 
-           Total height units per column = 3.
-           EK7-9: 1 unit each (C, B, A).
-           EK10-11: B takes 2 units, A takes 1 unit.
-           EK12: Item takes 3 units.
+           Columns automatically stretch to match height.
+           We force aspect-square on 'unit' cells (C, B, A in EK7-9, A in EK10-11).
+           This ensures alignment.
        */}
        {showTopSections && (
-           <div className="grid grid-cols-6 gap-2 items-stretch h-[240px]">
+           <div className="grid grid-cols-6 gap-2 items-stretch">
                {/* EK 7 */}
                <MatrixColumnExplicit 
                    label="EK7" 
                    slots={[
-                       { key: 'EK 7 C', label: 'C', flex: 1 },
-                       { key: 'EK 7 B', label: 'B', flex: 1 },
-                       { key: 'EK 7 A', label: 'A', flex: 1 }
+                       { key: 'EK 7 C', label: 'C', flex: 1, square: true },
+                       { key: 'EK 7 B', label: 'B', flex: 1, square: true },
+                       { key: 'EK 7 A', label: 'A', flex: 1, square: true }
                    ]}
                />
                {/* EK 8 */}
                <MatrixColumnExplicit 
                    label="EK8" 
                    slots={[
-                       { key: 'EK 8 C', label: 'C', flex: 1 },
-                       { key: 'EK 8 B', label: 'B', flex: 1 },
-                       { key: 'EK 8 A', label: 'A', flex: 1 }
+                       { key: 'EK 8 C', label: 'C', flex: 1, square: true },
+                       { key: 'EK 8 B', label: 'B', flex: 1, square: true },
+                       { key: 'EK 8 A', label: 'A', flex: 1, square: true }
                    ]}
                />
                {/* EK 9 */}
                <MatrixColumnExplicit 
                    label="EK9" 
                    slots={[
-                       { key: 'EK 9 C', label: 'C', flex: 1 },
-                       { key: 'EK 9 B', label: 'B', flex: 1 },
-                       { key: 'EK 9 A', label: 'A', flex: 1 }
+                       { key: 'EK 9 C', label: 'C', flex: 1, square: true },
+                       { key: 'EK 9 B', label: 'B', flex: 1, square: true },
+                       { key: 'EK 9 A', label: 'A', flex: 1, square: true }
                    ]}
                />
                {/* EK 10 (B stretches to cover top 2/3, A covers bottom 1/3) */}
@@ -339,7 +347,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
                    label="EK10" 
                    slots={[
                        { key: 'EK 10 B', label: 'B', flex: 2 },
-                       { key: 'EK 10 A', label: 'A', flex: 1 }
+                       { key: 'EK 10 A', label: 'A', flex: 1, square: true }
                    ]}
                />
                {/* EK 11 (B stretches to cover top 2/3, A covers bottom 1/3) */}
@@ -347,7 +355,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
                    label="EK11" 
                    slots={[
                        { key: 'EK 11 B', label: 'B', flex: 2 },
-                       { key: 'EK 11 A', label: 'A', flex: 1 }
+                       { key: 'EK 11 A', label: 'A', flex: 1, square: true }
                    ]}
                />
                {/* EK 12 (Stretches full height) */}

@@ -3,7 +3,7 @@ import { Card, BottomSheet } from '../components/UI';
 import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
 import { Bike, FileText, Minus, Plus, Camera, X, ImageIcon, Image as ImageIcon2, Trash2 } from 'lucide-react';
-import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, compressImage, base64ToFile } from '../utils';
+import { triggerHaptic, copyToClipboard, generateId, compressImage, base64ToFile } from '../utils';
 import { get, set } from 'idb-keyval';
 
 interface Props {
@@ -145,14 +145,18 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   // Option 1: Share Text (Report)
   const handleShareText = async () => {
     triggerHaptic(settings.vibration);
-    const saved = saveHistoryIfNeeded();
+    saveHistoryIfNeeded();
 
-    let report = `📅 *${getTodayDateString()}* - ${t.bikes}\n\n`;
+    // Format: DD/MM
+    const date = new Date();
+    const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+
+    let report = `${dateStr}\n`;
     BIKE_CATEGORIES.forEach(cat => {
       const count = getCount(cat);
-      if (count > 0) report += `▪️ ${cat}: *${count}*\n`;
+      // List all items, even if 0, as per user request
+      report += `${cat}: ${count}\n`;
     });
-    if (Object.keys(counts).length === 0) report += "No data";
 
     if (navigator.share && navigator.canShare && navigator.canShare({text: report})) {
       try {
@@ -182,7 +186,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
       return;
     }
 
-    const saved = saveHistoryIfNeeded();
+    saveHistoryIfNeeded();
 
     if (navigator.share && navigator.canShare) {
       try {
@@ -315,14 +319,18 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
 
           <button
             onClick={handleSharePhotos}
-            className={`bg-blue-600 hover:bg-blue-500 text-white px-4 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-90 gap-2 flex-1 ${sessionImages.length === 0 ? 'opacity-50 grayscale' : ''}`}
-            disabled={sessionImages.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-90 gap-2 flex-1"
           >
-            <ImageIcon2 size={20} strokeWidth={2.5} />
-            <span className="font-bold text-sm uppercase">{t.sharePhotos}</span>
+             <div className="relative">
+              <ImageIcon2 size={20} strokeWidth={2.5} />
+              {sessionImages.length > 0 && (
+                <span className="absolute -top-2 -right-2 w-3 h-3 bg-orange-500 rounded-full border border-blue-600"></span>
+              )}
+            </div>
+            <span className="font-bold text-sm uppercase ml-2">{t.sharePhotos}</span>
           </button>
       </div>
-
+      
       <BottomSheet
         isOpen={!!activeCat}
         onClose={() => setActiveCat(null)}
@@ -348,7 +356,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
               onPointerUp={stopRepeating}
               onPointerLeave={stopRepeating}
               onContextMenu={(e) => e.preventDefault()}
-              className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400 touch-none"
+              className="flex-1 h-40 rounded-3xl bg-orange-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30 active:scale-95 transition-all active:bg-orange-600 border border-transparent active:border-orange-400 touch-none"
             >
               <Plus size={64} strokeWidth={3} />
             </button>

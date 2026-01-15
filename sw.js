@@ -1,7 +1,8 @@
-const CACHE_NAME = 'work-stats-v1.32';
+const CACHE_NAME = 'work-stats-v1.36';
 // Only precache the absolute essentials. 
-// DO NOT include index.tsx here as it might cause 404s in some environments, breaking the PWA install.
+// We must cache './' so the start_url "." in manifest works offline.
 const PRECACHE_URLS = [
+  './',
   './index.html',
   './manifest.json'
 ];
@@ -12,7 +13,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        // If any of these fail, the SW installation fails. Kept list minimal.
         return cache.addAll(PRECACHE_URLS);
       })
       .catch((err) => {
@@ -51,15 +51,16 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Network failure (offline)
-          return caches.match('./index.html');
+          // Network failure (offline). Try to match the exact request first (e.g. '/'), then fallback to index.html
+          return caches.match(event.request).then(response => {
+              return response || caches.match('./index.html');
+          });
         })
     );
     return;
   }
 
   // Strategy 2: External Dependencies (esm.sh, tailwind, telegram) - Stale While Revalidate
-  // Added telegram.org to this list
   if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com' || url.hostname === 'telegram.org') {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -77,8 +78,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Runtime Caching for everything else (including index.tsx)
-  // This prevents installation failure if a file is missing
+  // Strategy 3: Runtime Caching for everything else
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
