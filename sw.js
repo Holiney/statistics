@@ -1,16 +1,17 @@
-const CACHE_NAME = 'work-stats-v1.41';
+const CACHE_NAME = 'work-stats-v1.42';
 
 // Install Event: Cache core assets opportunistically
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Try to cache both root and index.html to cover all bases.
-      // We do not abort if one fails.
+      // Critical: Cache the entry HTML AND the entry TSX/JS
+      // Since we use <script type="module" src="./index.tsx">, we must cache index.tsx
       const urlsToCache = [
         './',
         './index.html',
-        './manifest.json'
+        './manifest.json',
+        './index.tsx'
       ];
 
       for (const url of urlsToCache) {
@@ -20,7 +21,6 @@ self.addEventListener('install', (event) => {
             await cache.put(url, response);
           }
         } catch (err) {
-          // Log but continue
           console.log(`[SW] Could not pre-cache ${url}`, err);
         }
       }
@@ -48,34 +48,36 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Strategy 1: Navigation (HTML)
-  // Network First -> Cache (Specific) -> Cache (Fallback to index.html/root)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // If server returns 404 for a nav request, check cache
-          if (!response || response.status === 404) {
-            throw new Error("Navigate 404");
+      (async () => {
+        try {
+          // Network First for fresh content
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            return networkResponse;
           }
-          return response;
-        })
-        .catch(async () => {
+          // If server returns 404/500, throw to trigger catch
+          throw new Error("Bad network response");
+        } catch (error) {
+          // Fallback to Cache
           const cache = await caches.open(CACHE_NAME);
           
-          // 1. Try exact match
-          const exactMatch = await cache.match(event.request);
-          if (exactMatch) return exactMatch;
+          // 1. Exact Match
+          let cached = await cache.match(event.request);
+          if (cached) return cached;
 
-          // 2. Try ./index.html
-          const indexHtml = await cache.match('./index.html');
-          if (indexHtml) return indexHtml;
+          // 2. index.html
+          cached = await cache.match('./index.html');
+          if (cached) return cached;
 
-          // 3. Try ./ (root)
-          const root = await cache.match('./');
-          if (root) return root;
+          // 3. root ./
+          cached = await cache.match('./');
+          if (cached) return cached;
 
-          return new Response("Offline - Page not found in cache.", { status: 404 });
-        })
+          return new Response("Offline - Page not found.", { status: 404 });
+        }
+      })()
     );
     return;
   }
@@ -94,8 +96,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => undefined); // Swallow network errors if background update fails
-          
+          }).catch(() => undefined);
           return cachedResponse || fetchPromise;
         });
       })
@@ -103,17 +104,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Default (Cache First, fallback to Network)
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((netRes) => {
-        // Optional: Cache other successful local GET requests
-        if (netRes.ok && url.origin === self.location.origin && event.request.method === 'GET') {
-             const clone = netRes.clone();
-             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return netRes;
-      });
-    })
-  );
+  // Strategy 3: Local Assets (.tsx, .ts, etc) - Stale While Revalidate
+  // This is critical for the "no-bundler" environment where source files are fetched at runtime.
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse.ok) {
+               cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => undefined);
+          return cachedResponse || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Strategy 4: Default fallback
+  event.respondWith(fetch(event.request));
 });
