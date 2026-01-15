@@ -1,12 +1,14 @@
-const CACHE_NAME = 'work-stats-v1.40';
+const CACHE_NAME = 'work-stats-v1.41';
 
+// Install Event: Cache core assets opportunistically
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Only cache index.html and manifest explicitly.
-      // Do NOT cache './' as it causes 404s on some hosting environments.
+      // Try to cache both root and index.html to cover all bases.
+      // We do not abort if one fails.
       const urlsToCache = [
+        './',
         './index.html',
         './manifest.json'
       ];
@@ -16,24 +18,23 @@ self.addEventListener('install', (event) => {
           const response = await fetch(url);
           if (response.ok) {
             await cache.put(url, response);
-          } else {
-            console.warn(`[SW] Failed to cache ${url}: ${response.status}`);
           }
         } catch (err) {
-          console.warn(`[SW] Network error caching ${url}`, err);
+          // Log but continue
+          console.log(`[SW] Could not pre-cache ${url}`, err);
         }
       }
     })
   );
 });
 
+// Activate Event: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -42,35 +43,48 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Fetch Event: Robust Handling
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Strategy 1: Navigation (HTML) - Network First, fallback to Cache (SPA Support)
+  // Strategy 1: Navigation (HTML)
+  // Network First -> Cache (Specific) -> Cache (Fallback to index.html/root)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // If the server returns 404 (common on some hosts for root URLs), return the cached index.html
+          // If server returns 404 for a nav request, check cache
           if (!response || response.status === 404) {
-             return caches.match('./index.html').then(r => r || caches.match('./'));
+            throw new Error("Navigate 404");
           }
           return response;
         })
-        .catch(() => {
-          // Network failure (offline).
-          // Fallback to index.html for ANY navigation request (SPA routing)
-          return caches.match('./index.html');
+        .catch(async () => {
+          const cache = await caches.open(CACHE_NAME);
+          
+          // 1. Try exact match
+          const exactMatch = await cache.match(event.request);
+          if (exactMatch) return exactMatch;
+
+          // 2. Try ./index.html
+          const indexHtml = await cache.match('./index.html');
+          if (indexHtml) return indexHtml;
+
+          // 3. Try ./ (root)
+          const root = await cache.match('./');
+          if (root) return root;
+
+          return new Response("Offline - Page not found in cache.", { status: 404 });
         })
     );
     return;
   }
 
-  // Strategy 2: External Dependencies (esm.sh, tailwind, telegram, images) - Stale While Revalidate
+  // Strategy 2: External Dependencies (Stale-While-Revalidate)
   if (
       url.hostname === 'esm.sh' || 
       url.hostname === 'cdn.tailwindcss.com' || 
-      url.hostname === 'telegram.org' ||
-      url.hostname === 'placehold.co' // Cache the new icons
+      url.hostname === 'placehold.co'
   ) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -80,7 +94,8 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => undefined);
+          }).catch(() => undefined); // Swallow network errors if background update fails
+          
           return cachedResponse || fetchPromise;
         });
       })
@@ -88,26 +103,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Runtime Caching for everything else
+  // Strategy 3: Default (Cache First, fallback to Network)
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request).then((netRes) => {
+        // Optional: Cache other successful local GET requests
+        if (netRes.ok && url.origin === self.location.origin && event.request.method === 'GET') {
+             const clone = netRes.clone();
+             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
-        
-        return fetch(event.request).then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
-          return response;
-        });
-      })
+        return netRes;
+      });
+    })
   );
 });
