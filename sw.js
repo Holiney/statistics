@@ -1,22 +1,30 @@
-const CACHE_NAME = 'work-stats-v1.37';
-// Only precache the absolute essentials. 
-// DO NOT include './' as it causes 404s on some static hosts, breaking SW install.
-const PRECACHE_URLS = [
-  './index.html',
-  './manifest.json'
-];
+const CACHE_NAME = 'work-stats-v1.38';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(PRECACHE_URLS);
-      })
-      .catch((err) => {
-        console.error('Cache install failed:', err);
-      })
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Try to cache these individually. 
+      // If one fails (e.g. 404), log it but don't crash the whole SW installation.
+      const urlsToCache = [
+        './', 
+        './index.html',
+        './manifest.json'
+      ];
+
+      for (const url of urlsToCache) {
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            await cache.put(url, response);
+          } else {
+            console.warn(`[SW] Failed to cache ${url}: ${response.status}`);
+          }
+        } catch (err) {
+          console.warn(`[SW] Network error caching ${url}`, err);
+        }
+      }
+    })
   );
 });
 
@@ -45,24 +53,29 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           // If the server returns 404 (common on some hosts for root URLs), return the cached index.html
           if (!response || response.status === 404) {
-             return caches.match('./index.html');
+             return caches.match('./index.html').then(r => r || caches.match('./'));
           }
           return response;
         })
         .catch(() => {
           // Network failure (offline).
           // Try to match the exact request first.
-          // Fallback to index.html if we are offline and navigating.
-          return caches.match(event.request).then(response => {
-              return response || caches.match('./index.html');
-          });
+          // Fallback to index.html or root if offline.
+          return caches.match(event.request)
+            .then(response => response || caches.match('./index.html'))
+            .then(response => response || caches.match('./'));
         })
     );
     return;
   }
 
-  // Strategy 2: External Dependencies (esm.sh, tailwind, telegram) - Stale While Revalidate
-  if (url.hostname === 'esm.sh' || url.hostname === 'cdn.tailwindcss.com' || url.hostname === 'telegram.org') {
+  // Strategy 2: External Dependencies (esm.sh, tailwind, telegram, images) - Stale While Revalidate
+  if (
+      url.hostname === 'esm.sh' || 
+      url.hostname === 'cdn.tailwindcss.com' || 
+      url.hostname === 'telegram.org' ||
+      url.hostname === 'placehold.co' // Cache the new icons
+  ) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {

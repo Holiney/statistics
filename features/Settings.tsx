@@ -1,24 +1,23 @@
 import React from 'react';
 import { TRANSLATIONS } from '../constants';
 import { AppSettings, Language, TelegramUser } from '../types';
-import { Moon, Sun, Smartphone, Globe, Link, LogOut, User, LogIn } from 'lucide-react';
-import { Card, Button } from '../components/UI';
+import { Moon, Sun, Smartphone, Link, User, Trash2 } from 'lucide-react';
+import { Card } from '../components/UI';
 import { triggerHaptic } from '../utils';
 
 interface Props {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   user: TelegramUser | null;
-  onLogout: () => void;
+  onReset: () => void;
 }
 
-export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onLogout }) => {
+export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onReset }) => {
   const t = TRANSLATIONS[settings.language];
 
   const handleVibrationToggle = () => {
     const newState = !settings.vibration;
     updateSettings({ vibration: newState });
-    // Trigger feedback immediately if turning on (or if already on and just testing logic)
     if (newState) {
       triggerHaptic(true);
     }
@@ -28,36 +27,29 @@ export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onLo
     <div className="space-y-6 pb-24">
       <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">{t.settings}</h2>
 
-      {/* User Profile */}
+      {/* User Profile (Static/Guest) */}
       <section>
         <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-2">
           Profile
         </label>
         <Card className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {user?.photo_url ? (
-              <img src={user.photo_url} alt={user.first_name} className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-600" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                 <User className="text-slate-400" />
-              </div>
-            )}
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                <User className="text-slate-400" />
+            </div>
             <div>
               <p className="font-bold text-slate-800 dark:text-white">
-                {user ? `${user.first_name} ${user.last_name || ''}` : t.guest}
+                {t.guest}
               </p>
-              {user?.username ? (
-                <p className="text-xs text-blue-500">@{user.username}</p>
-              ) : (
-                <p className="text-xs text-orange-500">{t.loginToSync}</p>
-              )}
+              <p className="text-xs text-slate-400">Local Session</p>
             </div>
           </div>
           <button 
-             onClick={onLogout}
-             className={`p-2 rounded-full transition-colors ${user ? 'bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40'}`}
+             onClick={onReset}
+             className="p-2 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+             title={t.resetApp}
           >
-             {user ? <LogOut size={20} /> : <LogIn size={20} />}
+             <Trash2 size={20} />
           </button>
         </Card>
       </section>

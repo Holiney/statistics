@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.37';
+export const APP_VERSION = 'v1.39';
 
 // --- Lists ---
 
@@ -103,7 +103,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     welcome: 'Welcome',
     skip: 'Skip',
     guest: 'Guest User',
-    loginToSync: 'Login to sync data'
+    loginToSync: 'Login to sync data',
+    resetApp: 'Reset App Data'
   },
   ua: {
     personnel: 'Персонал',
@@ -149,7 +150,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     welcome: 'Вітаємо',
     skip: 'Пропустити',
     guest: 'Гість',
-    loginToSync: 'Увійдіть для синхронізації'
+    loginToSync: 'Увійдіть для синхронізації',
+    resetApp: 'Скинути всі дані'
   },
   nl: {
     personnel: 'Personeel',
@@ -195,6 +197,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     welcome: 'Welkom',
     skip: 'Overslaan',
     guest: 'Gastgebruiker',
-    loginToSync: 'Log in om te synchroniseren'
+    loginToSync: 'Log in om te synchroniseren',
+    resetApp: 'App resetten'
   }
 };

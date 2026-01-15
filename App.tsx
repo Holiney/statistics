@@ -10,7 +10,6 @@ import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
 import { History } from './features/History';
 import { Settings } from './features/Settings';
-import { Login } from './components/Login'; 
 import { Toast, Button } from './components/UI';
 import { getISOWeek } from './utils';
 
@@ -26,19 +25,8 @@ const App: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   
-  // Auth State
-  const [user, setUser] = useState<TelegramUser | null>(() => {
-    try {
-      const savedUser = localStorage.getItem('ws_user');
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch { return null; }
-  });
-
-  const [isGuest, setIsGuest] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('ws_is_guest') === 'true';
-    } catch { return false; }
-  });
+  // User state is kept as null (Guest mode always) for compatibility
+  const user: TelegramUser | null = null;
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -136,30 +124,12 @@ const App: React.FC = () => {
     setShowInstallBanner(false);
   };
 
-  // Handle Login
-  const handleLogin = (newUser: TelegramUser) => {
-    setUser(newUser);
-    setIsGuest(false);
-    localStorage.setItem('ws_user', JSON.stringify(newUser));
-    localStorage.removeItem('ws_is_guest');
-  };
-
-  const handleSkipLogin = () => {
-    setIsGuest(true);
-    localStorage.setItem('ws_is_guest', 'true');
-  };
-
-  const handleLogoutOrLogin = () => {
-    if (user) {
-        if(window.confirm('Are you sure you want to logout?')) {
-            setUser(null);
-            localStorage.removeItem('ws_user');
-            setIsGuest(false); 
-            localStorage.removeItem('ws_is_guest');
-        }
-    } else {
-        setIsGuest(false);
-        localStorage.removeItem('ws_is_guest');
+  const handleResetData = () => {
+    if(window.confirm('Reset application data and clear local storage?')) {
+        localStorage.clear();
+        set('ws_history', []);
+        set('ws_bikes_images_draft', []);
+        window.location.reload();
     }
   };
 
@@ -194,10 +164,6 @@ const App: React.FC = () => {
         let data = await get<HistoryEntry[]>('ws_history');
         const historyList = data || [];
         setHistory(historyList);
-        
-        // Logic to restore today's history to draft if draft was empty but history exists
-        // (Skipped here to prioritize the auto-clear logic, preventing accidental restoration of old data)
-
       } catch (err) {
         console.error('Failed to load history', err);
         showToast('Storage Error', 'error');
@@ -277,17 +243,6 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[settings.language];
 
-  if (!user && !isGuest) {
-    return (
-      <>
-        <Login onLogin={handleLogin} onSkip={handleSkipLogin} />
-        <div className="hidden">
-           {settings.theme === 'dark' ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')}
-        </div>
-      </>
-    );
-  }
-
   const tabs = [
     { id: 'personnel', icon: UsersRound, label: t.personnel },
     { id: 'bikes', icon: Bike, label: t.bikes },
@@ -303,11 +258,7 @@ const App: React.FC = () => {
           Work Stats
         </h1>
         <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer" onClick={() => setActiveTab('settings')}>
-           {user?.photo_url ? (
-             <img src={user.photo_url} alt="me" /> 
-           ) : (
              <UsersRound size={16} className="text-slate-400" />
-           )}
         </div>
       </header>
 
@@ -352,7 +303,7 @@ const App: React.FC = () => {
              settings={settings} 
              updateSettings={updateSettings} 
              user={user}
-             onLogout={handleLogoutOrLogin}
+             onReset={handleResetData}
           />
         )}
       </main>
