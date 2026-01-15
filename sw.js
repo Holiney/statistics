@@ -1,8 +1,7 @@
-const CACHE_NAME = 'work-stats-v1.36';
+const CACHE_NAME = 'work-stats-v1.37';
 // Only precache the absolute essentials. 
-// We must cache './' so the start_url "." in manifest works offline.
+// DO NOT include './' as it causes 404s on some static hosts, breaking SW install.
 const PRECACHE_URLS = [
-  './',
   './index.html',
   './manifest.json'
 ];
@@ -51,7 +50,9 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Network failure (offline). Try to match the exact request first (e.g. '/'), then fallback to index.html
+          // Network failure (offline).
+          // Try to match the exact request first.
+          // Fallback to index.html if we are offline and navigating.
           return caches.match(event.request).then(response => {
               return response || caches.match('./index.html');
           });
