@@ -1,17 +1,15 @@
-const CACHE_NAME = 'work-stats-v1.42';
+const CACHE_NAME = 'work-stats-v1.43';
 
 // Install Event: Cache core assets opportunistically
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Critical: Cache the entry HTML AND the entry TSX/JS
-      // Since we use <script type="module" src="./index.tsx">, we must cache index.tsx
+      // Pre-cache critical assets for offline access
+      // Note: JS bundles and manifest are cached automatically on first fetch
       const urlsToCache = [
         './',
-        './index.html',
-        './manifest.json',
-        './index.tsx'
+        './index.html'
       ];
 
       for (const url of urlsToCache) {
