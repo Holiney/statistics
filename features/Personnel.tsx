@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Card, BottomSheet } from '../components/UI';
+import { Card, BottomSheet, Button } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { UsersRound, Car, Copy, Minus, Plus, Trash2 } from 'lucide-react';
+import { UsersRound, Car, Copy, Minus, Plus, Trash2, CloudUpload } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
 
 interface Props {
@@ -16,12 +16,11 @@ interface Props {
 export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
   const t = TRANSLATIONS[settings.language];
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Refs for repeat logic
   const intervalRef = useRef<any>(null);
   const timeoutRef = useRef<any>(null);
 
-  // Fix: added explicit cast to handle potential unknown type issues in specific environments
   const getCount = (key: string) => (counts[key] as number) || 0;
 
   const handleAdjust = (delta: number) => {
@@ -35,18 +34,13 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
   };
 
   const startRepeating = (delta: number) => {
-    // Fire immediately
     handleAdjust(delta);
-    
-    // Clear any existing timers
     stopRepeating();
-
-    // Set delay before rapid fire
     timeoutRef.current = setTimeout(() => {
       intervalRef.current = setInterval(() => {
         handleAdjust(delta);
-      }, 100); // 100ms repeat speed
-    }, 400); // 400ms delay before repeat starts
+      }, 100);
+    }, 400);
   };
 
   const stopRepeating = () => {
@@ -58,6 +52,65 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     if (window.confirm(t.confirmClear)) {
       setCounts({});
       onShowToast(t.dataCleared, 'success');
+    }
+  };
+
+  const handleSync = async () => {
+    if (Object.keys(counts).length === 0) {
+      onShowToast("No data to sync", 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const date = new Date().toISOString();
+    
+    // Payload identifies itself as 'personnel' for the script to route to 'Aantal' sheet
+    const payload = {
+      date: date,
+      type: 'personnel',
+      items: counts 
+    };
+
+    let synced = false;
+    const url = settings.webhookUrl;
+
+    try {
+      if (url) {
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+        synced = true;
+        onShowToast(t.success, 'success');
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        synced = true;
+        onShowToast(t.success, 'success');
+      }
+
+      onSaveHistory({
+        id: generateId(),
+        date: date,
+        type: 'personnel',
+        summary: `${t.personnel} & ${t.cars} (Cloud)`,
+        details: counts,
+        synced: synced
+      });
+    } catch (error) {
+      console.error("Sync failed:", error);
+      onSaveHistory({
+        id: generateId(),
+        date: date,
+        type: 'personnel',
+        summary: `${t.personnel} & ${t.cars}`,
+        details: counts,
+        synced: false
+      });
+      onShowToast(url ? 'Saved Locally (Sync Failed)' : t.error, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,7 +142,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
   };
 
   return (
-    <div className="space-y-4 pb-32 relative">
+    <div className="space-y-6 pb-20">
       <div className="grid grid-cols-2 gap-4">
         <Card 
           onClick={() => setActiveZone('parking')}
@@ -136,24 +189,38 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         })}
       </div>
 
-      <div className="flex justify-between items-center w-full py-2 px-1">
-        <button 
-          onClick={handleClear}
-          className="flex items-center gap-2 px-3 py-2 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all"
+      <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <button
+          onClick={handleSync}
+          disabled={isSubmitting}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 gap-3 disabled:opacity-50"
         >
-          <Trash2 size={16} />
-          {t.clearData}
+          {isSubmitting ? (
+             <div className="animate-spin h-6 w-6 border-3 border-white/30 border-t-white rounded-full" />
+          ) : (
+             <CloudUpload size={24} />
+          )}
+          <span className="font-bold uppercase tracking-widest">{isSubmitting ? t.submitting : t.submit}</span>
         </button>
-        <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono opacity-60">{APP_VERSION}</span>
-      </div>
 
-      <div className="fixed bottom-24 right-4 z-30">
-          <button
-            onClick={handleCopy}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 transition-transform active:scale-90"
+        <button
+          onClick={handleCopy}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 gap-3"
+        >
+          <Copy size={24} />
+          <span className="font-bold uppercase tracking-widest">{t.copy}</span>
+        </button>
+
+        <div className="flex justify-between items-center w-full py-2">
+          <button 
+            onClick={handleClear}
+            className="flex items-center gap-2 px-3 py-2 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all"
           >
-            <Copy size={28} />
+            <Trash2 size={16} />
+            {t.clearData}
           </button>
+          <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono opacity-60">{APP_VERSION}</span>
+        </div>
       </div>
 
       <BottomSheet
@@ -171,8 +238,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
               onPointerDown={() => startRepeating(-1)}
               onPointerUp={stopRepeating}
               onPointerLeave={stopRepeating}
-              onContextMenu={(e) => e.preventDefault()}
-              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm active:bg-slate-200 dark:active:bg-slate-600 border border-transparent active:border-slate-300 touch-none"
+              className="flex-1 h-40 rounded-3xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-800 dark:text-slate-200 active:scale-95 transition-all shadow-sm border border-transparent active:border-slate-300 touch-none"
             >
               <Minus size={64} strokeWidth={3} className="opacity-80" />
             </button>
@@ -180,7 +246,6 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
               onPointerDown={() => startRepeating(1)}
               onPointerUp={stopRepeating}
               onPointerLeave={stopRepeating}
-              onContextMenu={(e) => e.preventDefault()}
               className="flex-1 h-40 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/30 active:scale-95 transition-all active:bg-blue-700 border border-transparent active:border-blue-400 touch-none"
             >
               <Plus size={64} strokeWidth={3} />

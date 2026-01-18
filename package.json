@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "mkdir -p public && cp sw.js manifest.json public/",
-    "build": "vite build && sed -i 's|href=\"./assets/manifest-[^\"]*\\.json\"|href=\"./manifest.json\"|' dist/index.html",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {

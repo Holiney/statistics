@@ -5,11 +5,13 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Pre-cache critical assets for offline access
-      // Note: JS bundles and manifest are cached automatically on first fetch
+      // Critical: Cache the entry HTML AND the entry TSX/JS
+      // Since we use <script type="module" src="./index.tsx">, we must cache index.tsx
       const urlsToCache = [
         './',
-        './index.html'
+        './index.html',
+        './manifest.json',
+        './index.tsx'
       ];
 
       for (const url of urlsToCache) {

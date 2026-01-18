@@ -1,6 +1,6 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.43';
+export const APP_VERSION = 'v1.44';
 
 // --- Lists ---
 
@@ -165,7 +165,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     copy: 'Kopiëren',
     copied: 'Gekopieerd!',
     share: 'Delen',
-    shareText: 'Tekst',
+    shareText: 'Tekст',
     sharePhotos: 'Fotos',
     sharing: 'Delen...',
     save: 'Opslaan',
