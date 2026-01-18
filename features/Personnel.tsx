@@ -62,8 +62,16 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     }
 
     setIsSubmitting(true);
-    const date = new Date().toISOString();
     
+    // Use local time instead of ISO to ensure we hit the correct day in the Sheet's timezone
+    const now = new Date();
+    const localDate = now.getFullYear() + '-' + 
+                      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                      String(now.getDate()).padStart(2, '0') + 'T' + 
+                      String(now.getHours()).padStart(2, '0') + ':' + 
+                      String(now.getMinutes()).padStart(2, '0') + ':' + 
+                      String(now.getSeconds()).padStart(2, '0');
+
     // STRICT KEY MAPPING to match "Aantal" headers (220, 230, ..., AUTO's)
     const mappedItems: Record<string, number> = {};
     Object.entries(counts).forEach(([key, val]) => {
@@ -79,7 +87,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     });
 
     const payload = {
-      date: date,
+      date: localDate,
       type: 'personnel',
       items: mappedItems 
     };
@@ -105,7 +113,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
       onSaveHistory({
         id: generateId(),
-        date: date,
+        date: new Date().toISOString(),
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars} (Cloud)`,
         details: counts,
@@ -115,7 +123,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       console.error("Sync failed:", error);
       onSaveHistory({
         id: generateId(),
-        date: date,
+        date: new Date().toISOString(),
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars}`,
         details: counts,
