@@ -64,16 +64,14 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     setIsSubmitting(true);
     const date = new Date().toISOString();
     
-    // MAP KEYS to match "Aantal" sheet headers
-    // "Zone 220" -> "220"
-    // "parking" -> "AUTO's"
+    // STRICT KEY MAPPING to match "Aantal" headers (220, 230, ..., AUTO's)
     const mappedItems: Record<string, number> = {};
     Object.entries(counts).forEach(([key, val]) => {
-      // Cast val to number as it may be inferred as unknown in some environments during iteration
-      const numVal = val as number;
+      const numVal = Number(val);
       if (key === 'parking') {
         mappedItems["AUTO's"] = numVal;
       } else if (key.startsWith('Zone ')) {
+        // "Zone 220" -> "220"
         mappedItems[key.replace('Zone ', '')] = numVal;
       } else {
         mappedItems[key] = numVal;
