@@ -64,11 +64,26 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     setIsSubmitting(true);
     const date = new Date().toISOString();
     
-    // Payload identifies itself as 'personnel' for the script to route to 'Aantal' sheet
+    // MAP KEYS to match "Aantal" sheet headers
+    // "Zone 220" -> "220"
+    // "parking" -> "AUTO's"
+    const mappedItems: Record<string, number> = {};
+    Object.entries(counts).forEach(([key, val]) => {
+      // Cast val to number as it may be inferred as unknown in some environments during iteration
+      const numVal = val as number;
+      if (key === 'parking') {
+        mappedItems["AUTO's"] = numVal;
+      } else if (key.startsWith('Zone ')) {
+        mappedItems[key.replace('Zone ', '')] = numVal;
+      } else {
+        mappedItems[key] = numVal;
+      }
+    });
+
     const payload = {
       date: date,
       type: 'personnel',
-      items: counts 
+      items: mappedItems 
     };
 
     let synced = false;
