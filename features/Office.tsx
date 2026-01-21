@@ -18,6 +18,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNegativeMode, setIsNegativeMode] = useState(false);
 
   // Determine available items based on room
   const availableItems = useMemo(() => {
@@ -35,15 +36,22 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
   const handleUpdate = (val: number | string) => {
     if (!selectedRoom || !selectedItem) return;
     triggerHaptic(settings.vibration);
-    
+
+    // Apply negative mode if enabled and value is a number
+    let finalValue = val;
+    if (isNegativeMode && typeof val === 'number') {
+      finalValue = -Math.abs(val);
+    }
+
     setRoomData(prev => ({
       ...prev,
       [selectedRoom]: {
         ...(prev[selectedRoom] || {}),
-        [selectedItem]: val
+        [selectedItem]: finalValue
       }
     }));
     setSelectedItem(null); // Close item sheet
+    setIsNegativeMode(false); // Reset negative mode after selection
   };
 
   const handleClear = () => {
@@ -162,32 +170,54 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     numbers = numbers.filter(n => n !== 0);
 
     return (
-      <div className={`grid ${gridCols} gap-3 p-2`}>
-        <button 
-            onClick={() => handleUpdate('-')} 
-            className={`col-span-full bg-slate-100 dark:bg-slate-700 py-3 rounded-lg text-slate-500 font-bold active:scale-95 transition-transform`}
+      <div className="space-y-3 p-2">
+        {/* Negative Mode Toggle */}
+        <button
+            onClick={() => {
+              setIsNegativeMode(!isNegativeMode);
+              triggerHaptic(settings.vibration);
+            }}
+            className={`w-full py-3 rounded-lg font-bold active:scale-95 transition-all ${
+              isNegativeMode
+                ? 'bg-orange-500 text-white shadow-lg'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+            }`}
         >
-            - (Empty)
+            {isNegativeMode ? '➖ Режим мінусу активний' : '➖ Увімкнути мінус'}
         </button>
-        {numbers.map(num => (
-            <button
-            key={num}
-            onClick={() => handleUpdate(num)}
-            className="aspect-square bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl text-lg font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 active:scale-90 transition-transform active:bg-blue-500 active:text-white active:border-blue-500 flex items-center justify-center"
-            >
-            {num}
-            </button>
-        ))}
+
+        {/* Number Grid */}
+        <div className={`grid ${gridCols} gap-3`}>
+          <button
+              onClick={() => handleUpdate('-')}
+              className={`col-span-full bg-slate-100 dark:bg-slate-700 py-3 rounded-lg text-slate-500 font-bold active:scale-95 transition-transform`}
+          >
+              - (Empty)
+          </button>
+          {numbers.map(num => (
+              <button
+              key={num}
+              onClick={() => handleUpdate(num)}
+              className={`aspect-square rounded-xl text-lg font-semibold border active:scale-90 transition-transform flex items-center justify-center ${
+                isNegativeMode
+                  ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 active:bg-orange-500 active:text-white active:border-orange-500'
+                  : 'bg-slate-50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-500 active:text-white active:border-blue-500'
+              }`}
+              >
+              {isNegativeMode ? `-${num}` : num}
+              </button>
+          ))}
+        </div>
       </div>
     );
   };
 
   // --- Layout Helper Components ---
 
-  const Cell: React.FC<{ 
-      item: string; 
-      label?: string; 
-      className?: string; 
+  const Cell: React.FC<{
+      item: string;
+      label?: string;
+      className?: string;
       style?: React.CSSProperties;
       forceSquare?: boolean;
   }> = ({ item, label, className = '', style, forceSquare }) => {
@@ -198,16 +228,19 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
     const val = getValue(selectedRoom!, item);
     const isSet = val !== '-';
-    
+    const isNegative = typeof val === 'number' && val < 0;
+
     return (
-      <div 
+      <div
         onClick={() => setSelectedItem(item)}
         style={style}
         className={`relative flex items-center justify-center p-1 rounded-lg border cursor-pointer transition-all active:scale-95 w-full !min-h-0 ${
           forceSquare ? 'aspect-square' : ''
         } ${
-          isSet 
-            ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-500 shadow-sm' 
+          isSet
+            ? isNegative
+              ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-500 shadow-sm'
+              : 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-500 shadow-sm'
             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400'
         } ${className}`}
       >
@@ -216,7 +249,13 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
             {label}
           </span>
         )}
-        <span className={`font-mono font-black text-sm ${isSet ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-600'}`}>
+        <span className={`font-mono font-black text-sm ${
+          isSet
+            ? isNegative
+              ? 'text-orange-700 dark:text-orange-300'
+              : 'text-indigo-700 dark:text-indigo-300'
+            : 'text-slate-300 dark:text-slate-600'
+        }`}>
           {val}
         </span>
       </div>
@@ -253,17 +292,27 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
           <h2 className="col-span-3 text-lg font-semibold text-slate-500 mb-2">{t.selectRoom}</h2>
           {OFFICE_ROOMS.map(room => {
              const hasData = roomData[room] && Object.keys(roomData[room]).length > 0;
+             const hasNegative = hasData && Object.values(roomData[room]).some(val => typeof val === 'number' && val < 0);
+
              return (
-              <Card 
-                key={room} 
+              <Card
+                key={room}
                 onClick={() => setSelectedRoom(room)}
                 className={`flex items-center justify-center h-20 transition-all ${
-                  hasData 
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-indigo-500/10'
+                  hasData
+                    ? hasNegative
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 shadow-orange-500/10'
+                      : 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-indigo-500/10'
                     : 'hover:border-blue-500 dark:hover:border-blue-400'
                 }`}
               >
-                <span className={`text-xl font-bold ${hasData ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-200'}`}>{room}</span>
+                <span className={`text-xl font-bold ${
+                  hasData
+                    ? hasNegative
+                      ? 'text-orange-700 dark:text-orange-200'
+                      : 'text-indigo-700 dark:text-indigo-200'
+                    : 'text-slate-700 dark:text-slate-200'
+                }`}>{room}</span>
               </Card>
              );
           })}
