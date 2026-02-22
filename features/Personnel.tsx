@@ -3,7 +3,7 @@ import { Card, BottomSheet, Button } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
 import { UsersRound, Car, Copy, Minus, Plus, Trash2, CloudUpload } from 'lucide-react';
-import { triggerHaptic, copyToClipboard, getTodayDateString, generateId } from '../utils';
+import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, getISOWeek } from '../utils';
 
 interface Props {
   settings: AppSettings;
@@ -88,6 +88,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
     const payload = {
       date: localDate,
+      week: getISOWeek(now),
       type: 'personnel',
       items: mappedItems 
     };
