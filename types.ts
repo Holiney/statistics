@@ -33,6 +33,7 @@ export interface HistoryEntry {
   type: 'personnel' | 'bikes' | 'office';
   summary: string;
   details: any;
+  room?: string;
   images?: string[]; // Base64 strings
   synced?: boolean;
 }
