@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Card, BottomSheet, Button } from '../components/UI';
+import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
 import { UsersRound, Car, Copy, Minus, Plus, Trash2, CloudUpload } from 'lucide-react';
@@ -94,7 +94,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     };
 
     let synced = false;
-    const url = settings.webhookUrl;
+    const url = settings.syncProvider === 'microsoft' ? settings.microsoftWebhookUrl : settings.webhookUrl;
 
     try {
       if (url) {

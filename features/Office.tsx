@@ -81,7 +81,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     };
 
     let synced = false;
-    const url = settings.webhookUrl;
+    const url = settings.syncProvider === 'microsoft' ? settings.microsoftWebhookUrl : settings.webhookUrl;
 
     try {
       
@@ -116,6 +116,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         type: 'office',
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
+        room: selectedRoom,
         synced: synced
       });
 
@@ -128,6 +129,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         type: 'office',
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
+        room: selectedRoom,
         synced: false
       });
       onShowToast(url ? 'Saved Locally (Sync Failed)' : t.error, 'error');

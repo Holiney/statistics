@@ -111,26 +111,66 @@ export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onRe
           </div>
         </section>
 
-        {/* Webhook Configuration */}
+        {/* Sync Provider & Webhook Configuration */}
         <section>
           <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-2">
-            Integration
+            {t.syncProvider}
           </label>
-          <Card className="space-y-2">
-             <div className="flex items-center gap-2 text-slate-500 mb-1">
+          <Card className="space-y-3">
+            <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-xl">
+              <button
+                onClick={() => updateSettings({ syncProvider: 'google' })}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${
+                  settings.syncProvider === 'google'
+                    ? 'bg-blue-500 text-white shadow'
+                    : 'text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Google Sheets
+              </button>
+              <button
+                onClick={() => updateSettings({ syncProvider: 'microsoft' })}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${
+                  settings.syncProvider === 'microsoft'
+                    ? 'bg-blue-500 text-white shadow'
+                    : 'text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Microsoft Excel
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
                 <Link size={16} />
-                <span className="text-xs font-medium">Power Automate Webhook</span>
-             </div>
-             <input 
-               type="text"
-               value={settings.webhookUrl}
-               onChange={(e) => updateSettings({ webhookUrl: e.target.value })}
-               placeholder="https://prod-..."
-               className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-             />
-             <p className="text-xs text-slate-400 px-1">
-               Enter the Power Automate 'HTTP Request' URL here for cloud syncing.
-             </p>
+                <span className="text-xs font-medium">Google Apps Script Webhook</span>
+              </div>
+              <input
+                type="text"
+                value={settings.webhookUrl}
+                onChange={(e) => updateSettings({ webhookUrl: e.target.value })}
+                placeholder="https://script.google.com/..."
+                className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <Link size={16} />
+                <span className="text-xs font-medium">Microsoft Power Automate Webhook</span>
+              </div>
+              <input
+                type="text"
+                value={settings.microsoftWebhookUrl}
+                onChange={(e) => updateSettings({ microsoftWebhookUrl: e.target.value })}
+                placeholder="https://prod-..."
+                className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <p className="text-xs text-slate-400 px-1">
+              {t.activeSyncProvider}: {settings.syncProvider === 'google' ? 'Google Sheets' : 'Microsoft Excel'}
+            </p>
           </Card>
         </section>
       </div>
