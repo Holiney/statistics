@@ -94,7 +94,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     };
 
     let synced = false;
-    const url = settings.webhookUrl;
+    const url = settings.syncProvider === 'microsoft' ? settings.microsoftWebhookUrl : settings.webhookUrl;
 
     try {
       if (url) {

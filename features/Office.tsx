@@ -81,7 +81,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     };
 
     let synced = false;
-    const url = settings.webhookUrl;
+    const url = settings.syncProvider === 'microsoft' ? settings.microsoftWebhookUrl : settings.webhookUrl;
 
     try {
       

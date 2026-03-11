@@ -104,7 +104,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Skip',
     guest: 'Guest User',
     loginToSync: 'Login to sync data',
-    resetApp: 'Reset App Data'
+    resetApp: 'Reset App Data',
+    syncProvider: 'Sync Provider',
+    activeSyncProvider: 'Active Provider'
   },
   ua: {
     personnel: 'Персонал',
@@ -151,7 +153,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Пропустити',
     guest: 'Гість',
     loginToSync: 'Увійдіть для синхронізації',
-    resetApp: 'Скинути всі дані'
+    resetApp: 'Скинути всі дані',
+    syncProvider: 'Провайдер синхронізації',
+    activeSyncProvider: 'Активний провайдер'
   },
   nl: {
     personnel: 'Personeel',
@@ -198,6 +202,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Overslaan',
     guest: 'Gastgebruiker',
     loginToSync: 'Log in om te synchroniseren',
-    resetApp: 'App resetten'
+    resetApp: 'App resetten',
+    syncProvider: 'Sync provider',
+    activeSyncProvider: 'Actieve provider'
   }
 };

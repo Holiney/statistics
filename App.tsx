@@ -17,7 +17,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
   theme: 'dark',
   vibration: true,
-  webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec'
+  webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec',
+  microsoftWebhookUrl: '',
+  syncProvider: 'google'
 };
 
 const App: React.FC = () => {
@@ -31,7 +33,8 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem('ws_settings');
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      if (!saved) return DEFAULT_SETTINGS;
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
     } catch {
       return DEFAULT_SETTINGS;
     }
