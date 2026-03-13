@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon, Download, X } from 'lucide-react';
+import { UsersRound, Bike, Package, History as HistoryIcon, Settings as SettingsIcon, Download } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,14 +10,17 @@ import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
 import { History } from './features/History';
 import { Settings } from './features/Settings';
-import { Toast, Button } from './components/UI';
+import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
   theme: 'dark',
   vibration: true,
-  webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec'
+  webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec',
+  microsoftWebhookUrl: '',
+  microsoftWorkbookUrl: 'https://excel.cloud.microsoft/open/onedrive/?docId=ACAB54217385C940%21s337ae4848b254850b1e733d23a59c44f&driveId=ACAB54217385C940',
+  syncProvider: 'google'
 };
 
 const App: React.FC = () => {
@@ -31,7 +34,8 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem('ws_settings');
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      if (!saved) return DEFAULT_SETTINGS;
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
     } catch {
       return DEFAULT_SETTINGS;
     }
@@ -219,21 +223,27 @@ const App: React.FC = () => {
   const addHistoryEntry = (entry: HistoryEntry) => {
     setHistory(prev => {
       const entryDateStr = new Date(entry.date).toDateString();
-      const existingIndex = prev.findIndex(item => 
-        new Date(item.date).toDateString() === entryDateStr && 
-        item.type === entry.type
-      );
+      const existingIndex = prev.findIndex(item => {
+        const isSameDay = new Date(item.date).toDateString() === entryDateStr;
+        const isSameType = item.type === entry.type;
+
+        if (entry.type === 'office') {
+          return isSameDay && isSameType && item.room === entry.room;
+        }
+
+        return isSameDay && isSameType;
+      });
 
       if (existingIndex >= 0) {
         const newHistory = [...prev];
-        newHistory[existingIndex] = { 
-          ...entry, 
-          id: prev[existingIndex].id 
+        newHistory[existingIndex] = {
+          ...entry,
+          id: prev[existingIndex].id
         };
         return newHistory;
-      } else {
-        return [entry, ...prev];
       }
+
+      return [entry, ...prev];
     });
   };
 

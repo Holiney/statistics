@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Card, BottomSheet, Button } from '../components/UI';
+import { Card, BottomSheet } from '../components/UI';
 import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
 import { UsersRound, Car, Copy, Minus, Plus, Trash2, CloudUpload } from 'lucide-react';
@@ -94,16 +94,37 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     };
 
     let synced = false;
-    const url = settings.webhookUrl;
+    const isMicrosoft = settings.syncProvider === 'microsoft';
+    const url = isMicrosoft ? settings.microsoftWebhookUrl : settings.webhookUrl;
+
+    if (isMicrosoft && !url) {
+      onShowToast('Set Microsoft webhook in Settings', 'error');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       if (url) {
-        await fetch(url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload)
-        });
+        if (isMicrosoft) {
+          const response = await fetch(url, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            throw new Error(`Microsoft sync failed with status ${response.status}`);
+          }
+        } else {
+          await fetch(url, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
+          });
+        }
+
         synced = true;
         onShowToast(t.success, 'success');
       } else {
@@ -130,7 +151,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         details: counts,
         synced: false
       });
-      onShowToast(url ? 'Saved Locally (Sync Failed)' : t.error, 'error');
+      onShowToast(isMicrosoft ? 'Microsoft sync failed. Check Flow run history / CORS.' : (url ? 'Saved Locally (Sync Failed)' : t.error), 'error');
     } finally {
       setIsSubmitting(false);
     }

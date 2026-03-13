@@ -1,11 +1,15 @@
 export type Language = 'ua' | 'en' | 'nl';
 export type Theme = 'light' | 'dark';
+export type SyncProvider = 'google' | 'microsoft';
 
 export interface AppSettings {
   language: Language;
   theme: Theme;
   vibration: boolean;
   webhookUrl: string;
+  microsoftWebhookUrl: string;
+  microsoftWorkbookUrl: string;
+  syncProvider: SyncProvider;
 }
 
 export interface TelegramUser {
@@ -33,6 +37,7 @@ export interface HistoryEntry {
   type: 'personnel' | 'bikes' | 'office';
   summary: string;
   details: any;
+  room?: string;
   images?: string[]; // Base64 strings
   synced?: boolean;
 }

@@ -104,7 +104,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Skip',
     guest: 'Guest User',
     loginToSync: 'Login to sync data',
-    resetApp: 'Reset App Data'
+    resetApp: 'Reset App Data',
+    syncProvider: 'Sync Provider',
+    activeSyncProvider: 'Active Provider',
+    microsoftWebhookHint: 'Excel file link is for opening the workbook. Sending data still requires a Power Automate webhook URL.'
   },
   ua: {
     personnel: 'Персонал',
@@ -151,7 +154,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Пропустити',
     guest: 'Гість',
     loginToSync: 'Увійдіть для синхронізації',
-    resetApp: 'Скинути всі дані'
+    resetApp: 'Скинути всі дані',
+    syncProvider: 'Провайдер синхронізації',
+    activeSyncProvider: 'Активний провайдер',
+    microsoftWebhookHint: 'Посилання Excel відкриває файл. Для відправки даних все одно потрібен webhook Power Automate.'
   },
   nl: {
     personnel: 'Personeel',
@@ -198,6 +204,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     skip: 'Overslaan',
     guest: 'Gastgebruiker',
     loginToSync: 'Log in om te synchroniseren',
-    resetApp: 'App resetten'
+    resetApp: 'App resetten',
+    syncProvider: 'Sync provider',
+    activeSyncProvider: 'Actieve provider',
+    microsoftWebhookHint: 'De Excel-link opent het bestand. Voor het verzenden van data is nog steeds een Power Automate webhook-URL nodig.'
   }
 };
