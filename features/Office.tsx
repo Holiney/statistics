@@ -81,24 +81,43 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
     };
 
     let synced = false;
-    const url = settings.syncProvider === 'microsoft' ? settings.microsoftWebhookUrl : settings.webhookUrl;
+    const isMicrosoft = settings.syncProvider === 'microsoft';
+    const url = isMicrosoft ? settings.microsoftWebhookUrl : settings.webhookUrl;
+
+    if (isMicrosoft && !url) {
+      onShowToast('Set Microsoft webhook in Settings', 'error');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       
       if (url) {
-        // Real Cloud Sync
-        // Google Apps Script requires no-cors mode and text/plain to avoid preflight CORS issues
-        await fetch(url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'text/plain',
-          },
-          body: JSON.stringify(payload)
-        });
+        if (isMicrosoft) {
+          const response = await fetch(url, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+          });
 
-        // In no-cors mode, the response is opaque (status 0, ok false) so we cannot check response.ok.
-        // If the fetch promise resolves without throwing, we assume the request was sent successfully.
+          if (!response.ok) {
+            throw new Error(`Microsoft sync failed with status ${response.status}`);
+          }
+        } else {
+          // Google Apps Script requires no-cors mode and text/plain to avoid preflight CORS issues
+          await fetch(url, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+
         synced = true;
         onShowToast(t.success, 'success');
       } else {
@@ -132,7 +151,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         room: selectedRoom,
         synced: false
       });
-      onShowToast(url ? 'Saved Locally (Sync Failed)' : t.error, 'error');
+      onShowToast(isMicrosoft ? 'Microsoft sync failed. Check Flow run history / CORS.' : (url ? 'Saved Locally (Sync Failed)' : t.error), 'error');
     } finally {
       setIsSubmitting(false);
     }

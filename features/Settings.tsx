@@ -168,6 +168,31 @@ export const Settings: React.FC<Props> = ({ settings, updateSettings, user, onRe
               />
             </div>
 
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <Link size={16} />
+                <span className="text-xs font-medium">Microsoft Excel File URL</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={settings.microsoftWorkbookUrl}
+                  onChange={(e) => updateSettings({ microsoftWorkbookUrl: e.target.value })}
+                  placeholder="https://excel.cloud.microsoft/..."
+                  className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  onClick={() => settings.microsoftWorkbookUrl && window.open(settings.microsoftWorkbookUrl, '_blank')}
+                  className="px-3 rounded-lg bg-slate-200 dark:bg-slate-600 text-xs font-bold text-slate-700 dark:text-slate-100"
+                >
+                  OPEN
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 px-1">
+                {t.microsoftWebhookHint}
+              </p>
+            </div>
+
             <p className="text-xs text-slate-400 px-1">
               {t.activeSyncProvider}: {settings.syncProvider === 'google' ? 'Google Sheets' : 'Microsoft Excel'}
             </p>

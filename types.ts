@@ -8,6 +8,7 @@ export interface AppSettings {
   vibration: boolean;
   webhookUrl: string;
   microsoftWebhookUrl: string;
+  microsoftWorkbookUrl: string;
   syncProvider: SyncProvider;
 }
 

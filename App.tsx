@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   vibration: true,
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec',
   microsoftWebhookUrl: '',
+  microsoftWorkbookUrl: 'https://excel.cloud.microsoft/open/onedrive/?docId=ACAB54217385C940%21s337ae4848b254850b1e733d23a59c44f&driveId=ACAB54217385C940',
   syncProvider: 'google'
 };
 
