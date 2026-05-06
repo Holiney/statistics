@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { TRANSLATIONS } from '../constants';
-import { AppSettings, Language, TelegramUser } from '../types';
-import { Moon, Sun, Smartphone, Link, User, Trash2, ShieldCheck, ShieldOff, Lock } from 'lucide-react';
+import { AppSettings, Language, TelegramUser, Zone } from '../types';
+import { Moon, Sun, Smartphone, Link, User, Trash2, ShieldCheck, ShieldOff, Lock, Plus, EyeOff, Eye } from 'lucide-react';
 import { Card } from '../components/UI';
-import { triggerHaptic } from '../utils';
+import { triggerHaptic, generateId } from '../utils';
 
 interface Props {
   settings: AppSettings;
@@ -13,15 +13,20 @@ interface Props {
   isAdmin: boolean;
   onAdminLogin: (password: string) => boolean;
   onAdminLogout: () => void;
+  zones: Zone[];
+  onSaveZone: (zone: Zone) => void;
 }
 
 export const Settings: React.FC<Props> = ({
   settings, updateSettings, user, onReset,
   isAdmin, onAdminLogin, onAdminLogout,
+  zones, onSaveZone,
 }) => {
   const t = TRANSLATIONS[settings.language];
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomLimited, setNewRoomLimited] = useState(false);
 
   const handleVibrationToggle = () => {
     const newState = !settings.vibration;
@@ -188,6 +193,70 @@ export const Settings: React.FC<Props> = ({
             </Card>
           )}
         </section>
+
+        {/* Zone management — admin only */}
+        {isAdmin && (
+          <section>
+            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-2">
+              Rooms (Zones)
+            </label>
+            <Card className="space-y-3">
+              {/* Existing zones */}
+              <div className="space-y-2">
+                {zones.map(zone => (
+                  <div key={zone.id} className="flex items-center justify-between gap-2 py-1">
+                    <span className={`font-mono font-bold text-sm ${zone.active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 line-through'}`}>
+                      {zone.name}
+                      {zone.isLimited && <span className="ml-2 text-[10px] font-normal text-slate-400">limited</span>}
+                    </span>
+                    <button
+                      onClick={() => onSaveZone({ ...zone, active: !zone.active })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      title={zone.active ? 'Deactivate' : 'Activate'}
+                    >
+                      {zone.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add new zone */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                <span className="text-xs font-medium text-slate-500">Add new room</span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newRoomName}
+                    onChange={e => setNewRoomName(e.target.value)}
+                    placeholder="Room name"
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2.5 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      const name = newRoomName.trim();
+                      if (!name) return;
+                      const id = `room_${name.replace(/\s+/g, '_')}_v${Date.now()}`;
+                      onSaveZone({ id, name, isLimited: newRoomLimited, active: true, createdAt: new Date().toISOString() });
+                      setNewRoomName('');
+                    }}
+                    className="px-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newRoomLimited}
+                    onChange={e => setNewRoomLimited(e.target.checked)}
+                    className="rounded"
+                  />
+                  Limited items only (EK13–18)
+                </label>
+              </div>
+            </Card>
+          </section>
+        )}
 
         {/* Sync Provider & Webhook — admin only */}
         {isAdmin && (

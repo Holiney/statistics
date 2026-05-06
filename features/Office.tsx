@@ -12,9 +12,10 @@ interface Props {
   data: Record<string, Record<string, number | string>>;
   onUpdate: React.Dispatch<React.SetStateAction<Record<string, Record<string, number | string>>>>;
   zones: Zone[];
+  zonesLoaded: boolean;
 }
 
-export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: roomData, onUpdate: setRoomData, zones }) => {
+export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: roomData, onUpdate: setRoomData, zones, zonesLoaded }) => {
   const t = TRANSLATIONS[settings.language];
   const activeZones = zones.filter(z => z.active);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
@@ -290,6 +291,15 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
   // If no room selected, show room list
   if (!selectedRoom) {
+    if (!zonesLoaded) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
+          <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+          <p className="text-sm font-medium text-slate-500">Loading rooms...</p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4 pb-32">
         <div className="grid grid-cols-3 gap-3">

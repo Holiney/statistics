@@ -13,7 +13,7 @@ import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
-import { seedZonesIfEmpty } from './services/zonesStore';
+import { seedZonesIfEmpty, saveZone } from './services/zonesStore';
 import { Zone } from './types';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -47,6 +47,7 @@ const App: React.FC = () => {
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
+  const [zonesLoaded, setZonesLoaded] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState<boolean>(
     () => localStorage.getItem('ws_admin') === 'true'
@@ -64,6 +65,19 @@ const App: React.FC = () => {
   const handleAdminLogout = () => {
     localStorage.removeItem('ws_admin');
     setIsAdmin(false);
+  };
+
+  const handleSaveZone = (zone: Zone) => {
+    setZones(prev => {
+      const idx = prev.findIndex(z => z.id === zone.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = zone;
+        return next;
+      }
+      return [...prev, zone];
+    });
+    saveZone(zone).catch(err => console.error('Failed to save zone', err));
   };
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
@@ -185,8 +199,8 @@ const App: React.FC = () => {
   // Load zones from Firestore, seeding from constants on first run.
   useEffect(() => {
     seedZonesIfEmpty()
-      .then(setZones)
-      .catch(err => console.error('Failed to load zones', err));
+      .then(z => { setZones(z); setZonesLoaded(true); })
+      .catch(err => { console.error('Failed to load zones', err); setZonesLoaded(true); });
   }, []);
 
   // Load History from Firestore (source of truth).
@@ -337,6 +351,7 @@ const App: React.FC = () => {
             data={officeData}
             onUpdate={setOfficeData}
             zones={zones}
+            zonesLoaded={zonesLoaded}
           />
         )}
         {activeTab === 'history' && (
@@ -358,6 +373,8 @@ const App: React.FC = () => {
             isAdmin={isAdmin}
             onAdminLogin={handleAdminLogin}
             onAdminLogout={handleAdminLogout}
+            zones={zones}
+            onSaveZone={handleSaveZone}
           />
         )}
       </main>
