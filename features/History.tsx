@@ -2,22 +2,65 @@ import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { TRANSLATIONS } from '../constants';
 import { AppSettings, HistoryEntry } from '../types';
-import { Trash2, Calendar, CheckCircle2, Sparkles, ChevronRight, Users, Bike, Package, X, Clock, ImageIcon } from 'lucide-react';
+import { Trash2, Calendar, CheckCircle2, Sparkles, ChevronRight, Users, Bike, Package, Clock, ImageIcon, RefreshCw } from 'lucide-react';
 import { Card, BottomSheet, Button } from '../components/UI';
+import { getISOWeek } from '../utils';
 
 interface Props {
   settings: AppSettings;
   history: HistoryEntry[];
   onClear: () => void;
   onShowToast: (msg: string, type: 'success' | 'error') => void;
+  onUpdateEntry: (id: string, patch: Partial<HistoryEntry>) => void;
   isAdmin: boolean;
 }
 
-export const History: React.FC<Props> = ({ settings, history, onClear, onShowToast, isAdmin }) => {
+export const History: React.FC<Props> = ({ settings, history, onClear, onShowToast, onUpdateEntry, isAdmin }) => {
   const t = TRANSLATIONS[settings.language];
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const handleRetrySync = async (entry: HistoryEntry) => {
+    const isMicrosoft = settings.syncProvider === 'microsoft';
+    const url = isMicrosoft ? settings.microsoftWebhookUrl : settings.webhookUrl;
+    if (!url) {
+      onShowToast('No webhook URL configured', 'error');
+      return;
+    }
+
+    setRetryingId(entry.id);
+    try {
+      const entryDate = new Date(entry.date);
+      const payload = entry.type === 'office'
+        ? { date: entry.date, week: getISOWeek(entryDate), room: entry.room, items: entry.details }
+        : { date: entry.date, week: getISOWeek(entryDate), type: entry.type, items: entry.details };
+
+      if (isMicrosoft) {
+        const res = await fetch(url, {
+          method: 'POST', mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } else {
+        await fetch(url, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      onUpdateEntry(entry.id, { syncedToExcel: true, syncedAt: new Date().toISOString() });
+      onShowToast(t.success, 'success');
+    } catch (err) {
+      console.error('Retry sync failed', err);
+      onShowToast('Sync failed', 'error');
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   // Grouping logic
   const groupedHistory = history.reduce((acc, entry) => {
@@ -167,11 +210,20 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-3">
-                               {entry.syncedToExcel && (
-                                  <CheckCircle2 size={18} className="text-emerald-500" />
-                               )}
-                               <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
+                            <div className="flex items-center gap-2">
+                              {entry.syncedToExcel ? (
+                                <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
+                              ) : entry.type !== 'bikes' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRetrySync(entry); }}
+                                  disabled={retryingId === entry.id}
+                                  className="p-1.5 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-500 hover:bg-orange-100 active:scale-90 transition-all disabled:opacity-50"
+                                  title="Retry sync"
+                                >
+                                  <RefreshCw size={14} className={retryingId === entry.id ? 'animate-spin' : ''} />
+                                </button>
+                              )}
+                              <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
                             </div>
                           </div>
                         </Card>

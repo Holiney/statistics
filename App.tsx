@@ -270,6 +270,16 @@ const App: React.FC = () => {
     });
   };
 
+  const updateHistoryEntry = (id: string, patch: Partial<HistoryEntry>) => {
+    setHistory(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+    const entry = history.find(e => e.id === id);
+    if (entry) {
+      saveHistoryEntry({ ...entry, ...patch }).catch(err =>
+        console.error('Failed to update history entry', err)
+      );
+    }
+  };
+
   const clearHistory = () => {
     setHistory([]);
     clearAllHistory().catch(err => {
@@ -335,6 +345,7 @@ const App: React.FC = () => {
             history={history}
             onClear={clearHistory}
             onShowToast={showToast}
+            onUpdateEntry={updateHistoryEntry}
             isAdmin={isAdmin}
           />
         )}
