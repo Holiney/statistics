@@ -13,6 +13,8 @@ import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
+import { seedZonesIfEmpty } from './services/zonesStore';
+import { Zone } from './types';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -43,6 +45,7 @@ const App: React.FC = () => {
   });
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
 
@@ -159,6 +162,13 @@ const App: React.FC = () => {
     setActiveTab(newTab);
     window.history.pushState({ tab: newTab }, '');
   };
+
+  // Load zones from Firestore, seeding from constants on first run.
+  useEffect(() => {
+    seedZonesIfEmpty()
+      .then(setZones)
+      .catch(err => console.error('Failed to load zones', err));
+  }, []);
 
   // Load History from Firestore (source of truth).
   // Firestore caches via IndexedDB internally, so offline reads still work.
@@ -291,12 +301,13 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'office' && (
-          <Office 
-            settings={settings} 
-            onShowToast={showToast} 
+          <Office
+            settings={settings}
+            onShowToast={showToast}
             onSaveHistory={addHistoryEntry}
             data={officeData}
             onUpdate={setOfficeData}
+            zones={zones}
           />
         )}
         {activeTab === 'history' && (

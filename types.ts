@@ -31,6 +31,14 @@ export interface RecordItem {
   timestamp: string;
 }
 
+export interface Zone {
+  id: string;
+  name: string;       // display name, e.g. "20"
+  isLimited: boolean; // true = only LIMITED_OFFICE_ITEMS
+  active: boolean;    // false = archived (replaced by a new version)
+  createdAt: string;
+}
+
 export interface HistoryEntry {
   id: string;
   date: string;
@@ -38,6 +46,8 @@ export interface HistoryEntry {
   summary: string;
   details: any;
   room?: string;
+  zoneId?: string;   // office entries: Firestore zone doc id
+  zoneName?: string; // snapshot of zone name at time of entry
   images?: string[]; // Base64 strings
   syncedToExcel?: boolean;
   syncedAt?: string | null;
