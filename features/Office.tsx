@@ -85,6 +85,8 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       year: now.getFullYear(),
       week: getISOWeek(now),
       room: selectedRoom,
+      zoneName: selectedZone?.name,
+      zoneId: selectedZone?.id,
       items: currentRoomItems,
     };
 
