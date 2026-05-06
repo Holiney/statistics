@@ -3,7 +3,7 @@ import { UsersRound, Bike, Package, History as HistoryIcon, Settings as Settings
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { AppSettings, HistoryEntry, Tab, TelegramUser, Zone } from './types';
+import { AppSettings, HistoryEntry, Tab, TelegramUser, Zone, Category } from './types';
 import { TRANSLATIONS } from './constants';
 import { Personnel } from './features/Personnel';
 import { Bikes } from './features/Bikes';
@@ -14,6 +14,7 @@ import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
 import { seedZonesIfEmpty, saveZone } from './services/zonesStore';
+import { seedCategoriesIfEmpty, saveCategory } from './services/categoriesStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -47,6 +48,8 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [zonesLoaded, setZonesLoaded] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState<boolean>(
     () => localStorage.getItem('ws_admin') === 'true'
@@ -77,6 +80,19 @@ const App: React.FC = () => {
       return [...prev, zone];
     });
     saveZone(zone).catch(err => console.error('Failed to save zone', err));
+  };
+
+  const handleSaveCategory = (category: Category) => {
+    setCategories(prev => {
+      const idx = prev.findIndex(c => c.id === category.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = category;
+        return next;
+      }
+      return [...prev, category];
+    });
+    saveCategory(category).catch(err => console.error('Failed to save category', err));
   };
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
@@ -195,11 +211,15 @@ const App: React.FC = () => {
     window.history.pushState({ tab: newTab }, '');
   };
 
-  // Load zones from Firestore, seeding from constants on first run.
+  // Load zones + categories from Firestore, seeding from constants on first run.
   useEffect(() => {
     seedZonesIfEmpty()
       .then(z => { setZones(z); setZonesLoaded(true); })
       .catch(err => { console.error('Failed to load zones', err); setZonesLoaded(true); });
+
+    seedCategoriesIfEmpty()
+      .then(c => { setCategories(c); setCategoriesLoaded(true); })
+      .catch(err => { console.error('Failed to load categories', err); setCategoriesLoaded(true); });
   }, []);
 
   // Load History from Firestore (source of truth).
@@ -324,12 +344,14 @@ const App: React.FC = () => {
 
       <main className="p-4 max-w-lg mx-auto min-h-[85vh]">
         {activeTab === 'personnel' && (
-          <Personnel 
-            settings={settings} 
-            onShowToast={showToast} 
-            onSaveHistory={addHistoryEntry} 
+          <Personnel
+            settings={settings}
+            onShowToast={showToast}
+            onSaveHistory={addHistoryEntry}
             data={personnelCounts}
             onUpdate={setPersonnelCounts}
+            categories={categories}
+            categoriesLoaded={categoriesLoaded}
           />
         )}
         {activeTab === 'bikes' && (
@@ -340,6 +362,8 @@ const App: React.FC = () => {
             data={bikeCounts}
             onUpdate={setBikeCounts}
             history={history}
+            categories={categories}
+            categoriesLoaded={categoriesLoaded}
           />
         )}
         {activeTab === 'office' && (
@@ -374,6 +398,8 @@ const App: React.FC = () => {
             onAdminLogout={handleAdminLogout}
             zones={zones}
             onSaveZone={handleSaveZone}
+            categories={categories}
+            onSaveCategory={handleSaveCategory}
           />
         )}
       </main>

@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BottomSheet } from '../components/UI';
-import { BIKE_CATEGORIES, TRANSLATIONS } from '../constants';
-import { AppSettings, HistoryEntry } from '../types';
+import { TRANSLATIONS } from '../constants';
+import { AppSettings, HistoryEntry, Category } from '../types';
 import { Bike, FileText, Minus, Plus, Camera, X, ImageIcon, Image as ImageIcon2, Trash2 } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, generateId, compressImage, base64ToFile } from '../utils';
 import { get, set } from 'idb-keyval';
+import { filterByKind } from '../services/categoriesStore';
 
 interface Props {
   settings: AppSettings;
@@ -13,10 +14,13 @@ interface Props {
   data: Record<string, number>;
   onUpdate: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   history: HistoryEntry[];
+  categories: Category[];
+  categoriesLoaded: boolean;
 }
 
-export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts, history }) => {
+export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts, history, categories, categoriesLoaded }) => {
   const t = TRANSLATIONS[settings.language];
+  const bikeCategories = filterByKind(categories, 'bike_category').filter(c => c.active).map(c => c.name);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [sessionImages, setSessionImages] = useState<string[]>([]);
   const [isImagesLoaded, setIsImagesLoaded] = useState(false);
@@ -142,7 +146,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
 
     let report = `${dateStr}\n`;
-    BIKE_CATEGORIES.forEach(cat => {
+    bikeCategories.forEach(cat => {
       const count = getCount(cat);
       report += `${cat}: ${count}\n`;
     });
@@ -190,6 +194,15 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
     }
   };
 
+  if (!categoriesLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
+        <div className="animate-spin h-8 w-8 border-2 border-orange-500 border-t-transparent rounded-full" />
+        <p className="text-sm font-medium text-slate-500">Loading categories...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-20">
       <input type="file" accept="image/*" capture="environment" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
@@ -217,7 +230,7 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
 
       {/* Category List */}
       <div className="grid grid-cols-1 gap-3">
-        {BIKE_CATEGORIES.map(cat => {
+        {bikeCategories.map(cat => {
           const count = getCount(cat);
           const isActive = count > 0;
           return (
