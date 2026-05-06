@@ -3,7 +3,7 @@ import { UsersRound, Bike, Package, History as HistoryIcon, Settings as Settings
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { AppSettings, HistoryEntry, Tab, TelegramUser } from './types';
+import { AppSettings, HistoryEntry, Tab, TelegramUser, Zone } from './types';
 import { TRANSLATIONS } from './constants';
 import { Personnel } from './features/Personnel';
 import { Bikes } from './features/Bikes';
@@ -14,7 +14,6 @@ import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
 import { seedZonesIfEmpty, saveZone } from './services/zonesStore';
-import { Zone } from './types';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',

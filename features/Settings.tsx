@@ -27,6 +27,17 @@ export const Settings: React.FC<Props> = ({
   const [loginError, setLoginError] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomLimited, setNewRoomLimited] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  const handleSavePassword = () => {
+    const p = newPasswordInput.trim();
+    if (!p) return;
+    updateSettings({ adminPassword: p });
+    setNewPasswordInput('');
+    setPasswordSaved(true);
+    setTimeout(() => setPasswordSaved(false), 2000);
+  };
 
   const handleVibrationToggle = () => {
     const newState = !settings.vibration;
@@ -153,14 +164,26 @@ export const Settings: React.FC<Props> = ({
               {/* Change password */}
               <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-700">
                 <span className="text-xs font-medium text-slate-500">Change password</span>
-                <input
-                  type="password"
-                  placeholder="New password"
-                  className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-                  onChange={(e) => {
-                    if (e.target.value) updateSettings({ adminPassword: e.target.value });
-                  }}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSavePassword()}
+                    placeholder="New password"
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2.5 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    onClick={handleSavePassword}
+                    className={`px-3 rounded-lg text-sm font-bold transition-colors ${
+                      passwordSaved
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-100 hover:bg-blue-500 hover:text-white'
+                    }`}
+                  >
+                    {passwordSaved ? '✓' : 'Save'}
+                  </button>
+                </div>
               </div>
             </Card>
           ) : (
