@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Internal tool — allow read/write for anyone who has the app URL.
+    // This is acceptable for a 1–3 person internal tool with no sensitive data.
+    // If needed in the future: restrict to specific IPs or add Firebase Auth.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
