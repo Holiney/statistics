@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card, BottomSheet, Button } from '../components/UI';
-import { OFFICE_ROOMS, LIMITED_ROOMS, OFFICE_ITEMS, LIMITED_OFFICE_ITEMS, OFFICE_ITEM_TYPES, TRANSLATIONS, APP_VERSION } from '../constants';
-import { AppSettings, HistoryEntry } from '../types';
+import { OFFICE_ITEMS, LIMITED_OFFICE_ITEMS, OFFICE_ITEM_TYPES, TRANSLATIONS, APP_VERSION } from '../constants';
+import { AppSettings, HistoryEntry, Zone } from '../types';
 import { CloudUpload, ChevronRight, Check, Trash2 } from 'lucide-react';
 import { triggerHaptic, generateId, getISOWeek } from '../utils';
 
@@ -11,20 +11,27 @@ interface Props {
   onSaveHistory: (entry: HistoryEntry) => void;
   data: Record<string, Record<string, number | string>>;
   onUpdate: React.Dispatch<React.SetStateAction<Record<string, Record<string, number | string>>>>;
+  zones: Zone[];
+  zonesLoaded: boolean;
 }
 
-export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: roomData, onUpdate: setRoomData }) => {
+export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: roomData, onUpdate: setRoomData, zones, zonesLoaded }) => {
   const t = TRANSLATIONS[settings.language];
+  const activeZones = zones.filter(z => z.active);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Determine available items based on room
+  const selectedZone = useMemo(
+    () => activeZones.find(z => z.name === selectedRoom) ?? null,
+    [activeZones, selectedRoom]
+  );
+
+  // Determine available items based on the selected zone's isLimited flag
   const availableItems = useMemo(() => {
-    if (!selectedRoom) return [];
-    if (LIMITED_ROOMS.includes(selectedRoom)) return LIMITED_OFFICE_ITEMS;
-    return OFFICE_ITEMS;
-  }, [selectedRoom]);
+    if (!selectedZone) return [];
+    return selectedZone.isLimited ? LIMITED_OFFICE_ITEMS : OFFICE_ITEMS;
+  }, [selectedZone]);
 
   // Get value helper
   const getValue = (room: string, item: string) => {
@@ -75,9 +82,10 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
     const payload = {
       date: localDate,
+      year: now.getFullYear(),
       week: getISOWeek(now),
       room: selectedRoom,
-      items: currentRoomItems
+      items: currentRoomItems,
     };
 
     let synced = false;
@@ -128,7 +136,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         onShowToast(t.success, 'success');
       }
 
-      // Save to History
+      // Save to History — snapshot zoneName so old entries are never affected by zone renames
       onSaveHistory({
         id: generateId(),
         date: payload.date,
@@ -136,7 +144,10 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
         room: selectedRoom,
-        synced: synced
+        zoneId: selectedZone?.id,
+        zoneName: selectedZone?.name,
+        syncedToExcel: synced,
+        syncedAt: synced ? new Date().toISOString() : null,
       });
 
     } catch (error) {
@@ -149,7 +160,10 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
         room: selectedRoom,
-        synced: false
+        zoneId: selectedZone?.id,
+        zoneName: selectedZone?.name,
+        syncedToExcel: false,
+        syncedAt: null,
       });
       onShowToast(isMicrosoft ? 'Microsoft sync failed. Check Flow run history / CORS.' : (url ? 'Saved Locally (Sync Failed)' : t.error), 'error');
     } finally {
@@ -277,23 +291,32 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
   // If no room selected, show room list
   if (!selectedRoom) {
+    if (!zonesLoaded) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
+          <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+          <p className="text-sm font-medium text-slate-500">Loading rooms...</p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4 pb-32">
         <div className="grid grid-cols-3 gap-3">
           <h2 className="col-span-3 text-lg font-semibold text-slate-500 mb-2">{t.selectRoom}</h2>
-          {OFFICE_ROOMS.map(room => {
-             const hasData = roomData[room] && Object.keys(roomData[room]).length > 0;
+          {activeZones.map(zone => {
+             const hasData = roomData[zone.name] && Object.keys(roomData[zone.name]).length > 0;
              return (
-              <Card 
-                key={room} 
-                onClick={() => setSelectedRoom(room)}
+              <Card
+                key={zone.id}
+                onClick={() => setSelectedRoom(zone.name)}
                 className={`flex items-center justify-center h-20 transition-all ${
-                  hasData 
+                  hasData
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-indigo-500/10'
                     : 'hover:border-blue-500 dark:hover:border-blue-400'
                 }`}
               >
-                <span className={`text-xl font-bold ${hasData ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-200'}`}>{room}</span>
+                <span className={`text-xl font-bold ${hasData ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-200'}`}>{zone.name}</span>
               </Card>
              );
           })}

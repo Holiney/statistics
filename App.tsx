@@ -3,7 +3,7 @@ import { UsersRound, Bike, Package, History as HistoryIcon, Settings as Settings
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { AppSettings, HistoryEntry, Tab, TelegramUser } from './types';
+import { AppSettings, HistoryEntry, Tab, TelegramUser, Zone } from './types';
 import { TRANSLATIONS } from './constants';
 import { Personnel } from './features/Personnel';
 import { Bikes } from './features/Bikes';
@@ -12,6 +12,8 @@ import { History } from './features/History';
 import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
+import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
+import { seedZonesIfEmpty, saveZone } from './services/zonesStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -20,7 +22,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec',
   microsoftWebhookUrl: '',
   microsoftWorkbookUrl: 'https://excel.cloud.microsoft/open/onedrive/?docId=ACAB54217385C940%21s337ae4848b254850b1e733d23a59c44f&driveId=ACAB54217385C940',
-  syncProvider: 'google'
+  syncProvider: 'google',
+  adminPassword: 'admin1234',
 };
 
 const App: React.FC = () => {
@@ -42,7 +45,39 @@ const App: React.FC = () => {
   });
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [zonesLoaded, setZonesLoaded] = useState(false);
+
+  const [isAdmin, setIsAdmin] = useState<boolean>(
+    () => localStorage.getItem('ws_admin') === 'true'
+  );
+
+  const handleAdminLogin = (password: string): boolean => {
+    if (password === settings.adminPassword) {
+      localStorage.setItem('ws_admin', 'true');
+      setIsAdmin(true);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('ws_admin');
+    setIsAdmin(false);
+  };
+
+  const handleSaveZone = (zone: Zone) => {
+    setZones(prev => {
+      const idx = prev.findIndex(z => z.id === zone.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = zone;
+        return next;
+      }
+      return [...prev, zone];
+    });
+    saveZone(zone).catch(err => console.error('Failed to save zone', err));
+  };
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
 
@@ -131,7 +166,6 @@ const App: React.FC = () => {
   const handleResetData = () => {
     if(window.confirm('Reset application data and clear local storage?')) {
         localStorage.clear();
-        set('ws_history', []);
         set('ws_bikes_images_draft', []);
         window.location.reload();
     }
@@ -161,18 +195,23 @@ const App: React.FC = () => {
     window.history.pushState({ tab: newTab }, '');
   };
 
-  // Load History from IndexedDB
+  // Load zones from Firestore, seeding from constants on first run.
+  useEffect(() => {
+    seedZonesIfEmpty()
+      .then(z => { setZones(z); setZonesLoaded(true); })
+      .catch(err => { console.error('Failed to load zones', err); setZonesLoaded(true); });
+  }, []);
+
+  // Load History from Firestore (source of truth).
+  // Firestore caches via IndexedDB internally, so offline reads still work.
   useEffect(() => {
     const initHistory = async () => {
       try {
-        let data = await get<HistoryEntry[]>('ws_history');
-        const historyList = data || [];
-        setHistory(historyList);
+        const data = await loadAllHistory();
+        setHistory(data);
       } catch (err) {
         console.error('Failed to load history', err);
         showToast('Storage Error', 'error');
-      } finally {
-        setIsHistoryLoaded(true);
       }
     };
     initHistory();
@@ -201,15 +240,8 @@ const App: React.FC = () => {
     localStorage.setItem('ws_office_draft', JSON.stringify(officeData));
   }, [officeData]);
 
-  // Persist History
-  useEffect(() => {
-    if (isHistoryLoaded) {
-      set('ws_history', history).catch(err => {
-        console.error('Failed to save history', err);
-        showToast('Failed to save history!', 'error');
-      });
-    }
-  }, [history, isHistoryLoaded]);
+  // History is persisted to Firestore inside addHistoryEntry/clearHistory directly.
+  // No bulk write effect — Firestore is the source of truth.
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -221,34 +253,52 @@ const App: React.FC = () => {
   };
 
   const addHistoryEntry = (entry: HistoryEntry) => {
-    setHistory(prev => {
-      const entryDateStr = new Date(entry.date).toDateString();
-      const existingIndex = prev.findIndex(item => {
-        const isSameDay = new Date(item.date).toDateString() === entryDateStr;
-        const isSameType = item.type === entry.type;
-
-        if (entry.type === 'office') {
-          return isSameDay && isSameType && item.room === entry.room;
-        }
-
-        return isSameDay && isSameType;
-      });
-
-      if (existingIndex >= 0) {
-        const newHistory = [...prev];
-        newHistory[existingIndex] = {
-          ...entry,
-          id: prev[existingIndex].id
-        };
-        return newHistory;
+    // Dedupe by same day + type (+ room for office), reusing existing id so we
+    // overwrite the same Firestore doc instead of creating a duplicate.
+    const entryDateStr = new Date(entry.date).toDateString();
+    const existingIndex = history.findIndex(item => {
+      const isSameDay = new Date(item.date).toDateString() === entryDateStr;
+      const isSameType = item.type === entry.type;
+      if (entry.type === 'office') {
+        return isSameDay && isSameType && item.room === entry.room;
       }
-
-      return [entry, ...prev];
+      return isSameDay && isSameType;
     });
+
+    const toWrite: HistoryEntry = existingIndex >= 0
+      ? { ...entry, id: history[existingIndex].id }
+      : entry;
+
+    if (existingIndex >= 0) {
+      const newHistory = [...history];
+      newHistory[existingIndex] = toWrite;
+      setHistory(newHistory);
+    } else {
+      setHistory([toWrite, ...history]);
+    }
+
+    saveHistoryEntry(toWrite).catch(err => {
+      console.error('Failed to save history entry to Firestore', err);
+      showToast('Failed to save history!', 'error');
+    });
+  };
+
+  const updateHistoryEntry = (id: string, patch: Partial<HistoryEntry>) => {
+    setHistory(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+    const entry = history.find(e => e.id === id);
+    if (entry) {
+      saveHistoryEntry({ ...entry, ...patch }).catch(err =>
+        console.error('Failed to update history entry', err)
+      );
+    }
   };
 
   const clearHistory = () => {
     setHistory([]);
+    clearAllHistory().catch(err => {
+      console.error('Failed to clear history in Firestore', err);
+      showToast('Failed to clear history!', 'error');
+    });
   };
 
   const t = TRANSLATIONS[settings.language];
@@ -283,37 +333,47 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'bikes' && (
-          <Bikes 
-            settings={settings} 
-            onShowToast={showToast} 
+          <Bikes
+            settings={settings}
+            onShowToast={showToast}
             onSaveHistory={addHistoryEntry}
             data={bikeCounts}
             onUpdate={setBikeCounts}
+            history={history}
           />
         )}
         {activeTab === 'office' && (
-          <Office 
-            settings={settings} 
-            onShowToast={showToast} 
+          <Office
+            settings={settings}
+            onShowToast={showToast}
             onSaveHistory={addHistoryEntry}
             data={officeData}
             onUpdate={setOfficeData}
+            zones={zones}
+            zonesLoaded={zonesLoaded}
           />
         )}
         {activeTab === 'history' && (
-          <History 
-            settings={settings} 
-            history={history} 
-            onClear={clearHistory} 
-            onShowToast={showToast} 
+          <History
+            settings={settings}
+            history={history}
+            onClear={clearHistory}
+            onShowToast={showToast}
+            onUpdateEntry={updateHistoryEntry}
+            isAdmin={isAdmin}
           />
         )}
         {activeTab === 'settings' && (
-          <Settings 
-             settings={settings} 
-             updateSettings={updateSettings} 
-             user={user}
-             onReset={handleResetData}
+          <Settings
+            settings={settings}
+            updateSettings={updateSettings}
+            user={user}
+            onReset={handleResetData}
+            isAdmin={isAdmin}
+            onAdminLogin={handleAdminLogin}
+            onAdminLogout={handleAdminLogout}
+            zones={zones}
+            onSaveZone={handleSaveZone}
           />
         )}
       </main>

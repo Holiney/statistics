@@ -12,9 +12,10 @@ interface Props {
   onSaveHistory: (entry: HistoryEntry) => void;
   data: Record<string, number>;
   onUpdate: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  history: HistoryEntry[];
 }
 
-export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
+export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts, history }) => {
   const t = TRANSLATIONS[settings.language];
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [sessionImages, setSessionImages] = useState<string[]>([]);
@@ -25,25 +26,25 @@ export const Bikes: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, d
   const intervalRef = useRef<any>(null);
   const timeoutRef = useRef<any>(null);
 
-  // Load unsaved images from IDB on mount
+  // Load unsaved images from IDB on mount, falling back to today's history entry
+  // (which now comes from Firestore via the `history` prop).
   useEffect(() => {
     const loadImages = async () => {
       const draftImgs = await get<string[]>('ws_bikes_images_draft');
       if (draftImgs && draftImgs.length > 0) {
         setSessionImages(draftImgs);
       } else {
-        const history = await get<HistoryEntry[]>('ws_history');
-        if (history) {
-          const todayStr = new Date().toDateString();
-          const todayEntry = history.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'bikes');
-          if (todayEntry && todayEntry.images) {
-            setSessionImages(todayEntry.images);
-          }
+        const todayStr = new Date().toDateString();
+        const todayEntry = history.find(h => new Date(h.date).toDateString() === todayStr && h.type === 'bikes');
+        if (todayEntry && todayEntry.images) {
+          setSessionImages(todayEntry.images);
         }
       }
       setIsImagesLoaded(true);
     };
     loadImages();
+    // Intentionally run only on mount — restore once, then track edits locally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save images to IDB whenever they change

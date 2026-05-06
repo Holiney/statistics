@@ -88,9 +88,10 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
     const payload = {
       date: localDate,
+      year: now.getFullYear(),
       week: getISOWeek(now),
       type: 'personnel',
-      items: mappedItems 
+      items: mappedItems,
     };
 
     let synced = false;
@@ -139,7 +140,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars} (Cloud)`,
         details: counts,
-        synced: synced
+        syncedToExcel: synced,
+        syncedAt: synced ? new Date().toISOString() : null,
       });
     } catch (error) {
       console.error("Sync failed:", error);
@@ -149,7 +151,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars}`,
         details: counts,
-        synced: false
+        syncedToExcel: false,
+        syncedAt: null,
       });
       onShowToast(isMicrosoft ? 'Microsoft sync failed. Check Flow run history / CORS.' : (url ? 'Saved Locally (Sync Failed)' : t.error), 'error');
     } finally {
