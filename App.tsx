@@ -12,6 +12,7 @@ import { History } from './features/History';
 import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
+import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -42,7 +43,6 @@ const App: React.FC = () => {
   });
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
 
@@ -131,7 +131,6 @@ const App: React.FC = () => {
   const handleResetData = () => {
     if(window.confirm('Reset application data and clear local storage?')) {
         localStorage.clear();
-        set('ws_history', []);
         set('ws_bikes_images_draft', []);
         window.location.reload();
     }
@@ -161,18 +160,16 @@ const App: React.FC = () => {
     window.history.pushState({ tab: newTab }, '');
   };
 
-  // Load History from IndexedDB
+  // Load History from Firestore (source of truth).
+  // Firestore caches via IndexedDB internally, so offline reads still work.
   useEffect(() => {
     const initHistory = async () => {
       try {
-        let data = await get<HistoryEntry[]>('ws_history');
-        const historyList = data || [];
-        setHistory(historyList);
+        const data = await loadAllHistory();
+        setHistory(data);
       } catch (err) {
         console.error('Failed to load history', err);
         showToast('Storage Error', 'error');
-      } finally {
-        setIsHistoryLoaded(true);
       }
     };
     initHistory();
@@ -201,15 +198,8 @@ const App: React.FC = () => {
     localStorage.setItem('ws_office_draft', JSON.stringify(officeData));
   }, [officeData]);
 
-  // Persist History
-  useEffect(() => {
-    if (isHistoryLoaded) {
-      set('ws_history', history).catch(err => {
-        console.error('Failed to save history', err);
-        showToast('Failed to save history!', 'error');
-      });
-    }
-  }, [history, isHistoryLoaded]);
+  // History is persisted to Firestore inside addHistoryEntry/clearHistory directly.
+  // No bulk write effect — Firestore is the source of truth.
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -221,34 +211,42 @@ const App: React.FC = () => {
   };
 
   const addHistoryEntry = (entry: HistoryEntry) => {
-    setHistory(prev => {
-      const entryDateStr = new Date(entry.date).toDateString();
-      const existingIndex = prev.findIndex(item => {
-        const isSameDay = new Date(item.date).toDateString() === entryDateStr;
-        const isSameType = item.type === entry.type;
-
-        if (entry.type === 'office') {
-          return isSameDay && isSameType && item.room === entry.room;
-        }
-
-        return isSameDay && isSameType;
-      });
-
-      if (existingIndex >= 0) {
-        const newHistory = [...prev];
-        newHistory[existingIndex] = {
-          ...entry,
-          id: prev[existingIndex].id
-        };
-        return newHistory;
+    // Dedupe by same day + type (+ room for office), reusing existing id so we
+    // overwrite the same Firestore doc instead of creating a duplicate.
+    const entryDateStr = new Date(entry.date).toDateString();
+    const existingIndex = history.findIndex(item => {
+      const isSameDay = new Date(item.date).toDateString() === entryDateStr;
+      const isSameType = item.type === entry.type;
+      if (entry.type === 'office') {
+        return isSameDay && isSameType && item.room === entry.room;
       }
+      return isSameDay && isSameType;
+    });
 
-      return [entry, ...prev];
+    const toWrite: HistoryEntry = existingIndex >= 0
+      ? { ...entry, id: history[existingIndex].id }
+      : entry;
+
+    if (existingIndex >= 0) {
+      const newHistory = [...history];
+      newHistory[existingIndex] = toWrite;
+      setHistory(newHistory);
+    } else {
+      setHistory([toWrite, ...history]);
+    }
+
+    saveHistoryEntry(toWrite).catch(err => {
+      console.error('Failed to save history entry to Firestore', err);
+      showToast('Failed to save history!', 'error');
     });
   };
 
   const clearHistory = () => {
     setHistory([]);
+    clearAllHistory().catch(err => {
+      console.error('Failed to clear history in Firestore', err);
+      showToast('Failed to clear history!', 'error');
+    });
   };
 
   const t = TRANSLATIONS[settings.language];
@@ -283,12 +281,13 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'bikes' && (
-          <Bikes 
-            settings={settings} 
-            onShowToast={showToast} 
+          <Bikes
+            settings={settings}
+            onShowToast={showToast}
             onSaveHistory={addHistoryEntry}
             data={bikeCounts}
             onUpdate={setBikeCounts}
+            history={history}
           />
         )}
         {activeTab === 'office' && (

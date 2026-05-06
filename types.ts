@@ -39,7 +39,8 @@ export interface HistoryEntry {
   details: any;
   room?: string;
   images?: string[]; // Base64 strings
-  synced?: boolean;
+  syncedToExcel?: boolean;
+  syncedAt?: string | null;
 }
 
 export interface OfficeData {

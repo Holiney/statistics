@@ -167,7 +167,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                             </div>
                             
                             <div className="flex items-center gap-3">
-                               {entry.synced && (
+                               {entry.syncedToExcel && (
                                   <CheckCircle2 size={18} className="text-emerald-500" />
                                )}
                                <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />

@@ -136,7 +136,8 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
         room: selectedRoom,
-        synced: synced
+        syncedToExcel: synced,
+        syncedAt: synced ? new Date().toISOString() : null,
       });
 
     } catch (error) {
@@ -149,7 +150,8 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
         room: selectedRoom,
-        synced: false
+        syncedToExcel: false,
+        syncedAt: null,
       });
       onShowToast(isMicrosoft ? 'Microsoft sync failed. Check Flow run history / CORS.' : (url ? 'Saved Locally (Sync Failed)' : t.error), 'error');
     } finally {
