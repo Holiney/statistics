@@ -23,7 +23,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   webhookUrl: 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec',
   microsoftWebhookUrl: '',
   microsoftWorkbookUrl: 'https://excel.cloud.microsoft/open/onedrive/?docId=ACAB54217385C940%21s337ae4848b254850b1e733d23a59c44f&driveId=ACAB54217385C940',
-  syncProvider: 'google'
+  syncProvider: 'google',
+  adminPassword: 'admin1234',
 };
 
 const App: React.FC = () => {
@@ -46,6 +47,24 @@ const App: React.FC = () => {
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
+
+  const [isAdmin, setIsAdmin] = useState<boolean>(
+    () => localStorage.getItem('ws_admin') === 'true'
+  );
+
+  const handleAdminLogin = (password: string): boolean => {
+    if (password === settings.adminPassword) {
+      localStorage.setItem('ws_admin', 'true');
+      setIsAdmin(true);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('ws_admin');
+    setIsAdmin(false);
+  };
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
 
@@ -311,19 +330,23 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'history' && (
-          <History 
-            settings={settings} 
-            history={history} 
-            onClear={clearHistory} 
-            onShowToast={showToast} 
+          <History
+            settings={settings}
+            history={history}
+            onClear={clearHistory}
+            onShowToast={showToast}
+            isAdmin={isAdmin}
           />
         )}
         {activeTab === 'settings' && (
-          <Settings 
-             settings={settings} 
-             updateSettings={updateSettings} 
-             user={user}
-             onReset={handleResetData}
+          <Settings
+            settings={settings}
+            updateSettings={updateSettings}
+            user={user}
+            onReset={handleResetData}
+            isAdmin={isAdmin}
+            onAdminLogin={handleAdminLogin}
+            onAdminLogout={handleAdminLogout}
           />
         )}
       </main>

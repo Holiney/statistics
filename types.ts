@@ -10,6 +10,7 @@ export interface AppSettings {
   microsoftWebhookUrl: string;
   microsoftWorkbookUrl: string;
   syncProvider: SyncProvider;
+  adminPassword: string;
 }
 
 export interface TelegramUser {

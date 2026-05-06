@@ -10,9 +10,10 @@ interface Props {
   history: HistoryEntry[];
   onClear: () => void;
   onShowToast: (msg: string, type: 'success' | 'error') => void;
+  isAdmin: boolean;
 }
 
-export const History: React.FC<Props> = ({ settings, history, onClear, onShowToast }) => {
+export const History: React.FC<Props> = ({ settings, history, onClear, onShowToast, isAdmin }) => {
   const t = TRANSLATIONS[settings.language];
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -85,8 +86,8 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
     <div className="pb-32">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{t.history}</h2>
-        {history.length > 0 && (
-          <button 
+        {history.length > 0 && isAdmin && (
+          <button
             onClick={() => { if(window.confirm(t.confirmClear)) onClear(); }}
             className="text-red-500 text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 px-4 py-2 bg-red-50 dark:bg-red-900/10 rounded-full border border-red-100 dark:border-red-900/30 active:scale-95 transition-all"
           >
