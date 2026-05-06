@@ -81,9 +81,10 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
 
     const payload = {
       date: localDate,
+      year: now.getFullYear(),
       week: getISOWeek(now),
       room: selectedRoom,
-      items: currentRoomItems
+      items: currentRoomItems,
     };
 
     let synced = false;

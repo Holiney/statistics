@@ -88,9 +88,10 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
     const payload = {
       date: localDate,
+      year: now.getFullYear(),
       week: getISOWeek(now),
       type: 'personnel',
-      items: mappedItems 
+      items: mappedItems,
     };
 
     let synced = false;

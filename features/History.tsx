@@ -62,22 +62,29 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
     }
   };
 
-  // Grouping logic
-  const groupedHistory = history.reduce((acc, entry) => {
-    const dateKey = new Date(entry.date).toLocaleDateString(settings.language === 'ua' ? 'uk-UA' : 'en-GB', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
-    if (!acc[dateKey]) acc[dateKey] = {};
-    
-    if (!acc[dateKey][entry.type]) acc[dateKey][entry.type] = [];
-    acc[dateKey][entry.type].push(entry);
-    
-    return acc;
-  }, {} as Record<string, Record<string, HistoryEntry[]>>);
+  // Grouping: year → date → type
+  // dateTimestamps tracks the latest timestamp per date key for sorting.
+  const locale = settings.language === 'ua' ? 'uk-UA' : 'en-GB';
 
-  const sortedDates = Object.keys(groupedHistory).sort((a, b) => {
-    return new Date(b).getTime() - new Date(a).getTime(); // Newest first
-  });
+  type DateGroup = Record<string, Record<string, HistoryEntry[]>>;
+  const groupedByYear: Record<string, DateGroup> = {};
+  const dateTimestamps: Record<string, number> = {}; // dateKey → max timestamp for sort
+
+  for (const entry of history) {
+    const d = new Date(entry.date);
+    const year = d.getFullYear().toString();
+    const dateKey = d.toLocaleDateString(locale, { month: 'long', day: 'numeric' });
+    const ts = d.getTime();
+
+    if (!groupedByYear[year]) groupedByYear[year] = {};
+    if (!groupedByYear[year][dateKey]) groupedByYear[year][dateKey] = {};
+    if (!groupedByYear[year][dateKey][entry.type]) groupedByYear[year][dateKey][entry.type] = [];
+    groupedByYear[year][dateKey][entry.type].push(entry);
+
+    if (!dateTimestamps[dateKey] || ts > dateTimestamps[dateKey]) dateTimestamps[dateKey] = ts;
+  }
+
+  const sortedYears = Object.keys(groupedByYear).sort((a, b) => Number(b) - Number(a));
 
   const handleAnalyze = async () => {
     if (!process.env.API_KEY) {
@@ -169,71 +176,89 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
            <p className="font-medium text-lg">{t.noHistory}</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {sortedDates.map((date) => (
-            <div key={date} className="space-y-4">
-              <h3 className="sticky top-16 z-10 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
-                <span className="w-8 h-px bg-slate-200 dark:bg-slate-800"></span>
-                {date}
-              </h3>
-              
-              <div className="space-y-6">
-                {Object.entries(groupedHistory[date]).map(([type, entries]) => (
-                  <div key={type} className="space-y-2">
-                    <div className="flex items-center gap-2 px-1 mb-1">
-                      {getTypeIcon(type)}
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        {getTypeName(type)}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {(entries as HistoryEntry[]).map((entry) => (
-                        <Card 
-                          key={entry.id} 
-                          onClick={() => setSelectedEntry(entry)}
-                          className="relative group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all duration-300 active:scale-98"
-                        >
-                          <div className="flex justify-between items-center">
-                            <div className="flex-1">
-                              <p className="font-bold text-slate-800 dark:text-slate-100 text-lg">{entry.summary}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                  <Clock size={12} />
-                                  {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                {entry.images && entry.images.length > 0 && (
-                                  <span className="text-xs font-bold text-blue-500 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
-                                    <ImageIcon size={12} /> {entry.images.length}
-                                  </span>
-                                )}
-                              </div>
+        <div className="space-y-10">
+          {sortedYears.map((year) => {
+            const sortedDates = Object.keys(groupedByYear[year]).sort(
+              (a, b) => (dateTimestamps[b] ?? 0) - (dateTimestamps[a] ?? 0)
+            );
+
+            return (
+              <div key={year}>
+                {/* Year header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl font-black text-slate-200 dark:text-slate-700">{year}</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                </div>
+
+                <div className="space-y-8">
+                  {sortedDates.map((date) => (
+                    <div key={date} className="space-y-4">
+                      <h3 className="sticky top-16 z-10 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+                        <span className="w-8 h-px bg-slate-200 dark:bg-slate-800" />
+                        {date}
+                      </h3>
+
+                      <div className="space-y-6">
+                        {Object.entries(groupedByYear[year][date]).map(([type, entries]) => (
+                          <div key={type} className="space-y-2">
+                            <div className="flex items-center gap-2 px-1 mb-1">
+                              {getTypeIcon(type)}
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                {getTypeName(type)}
+                              </span>
                             </div>
-                            
-                            <div className="flex items-center gap-2">
-                              {entry.syncedToExcel ? (
-                                <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
-                              ) : entry.type !== 'bikes' && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleRetrySync(entry); }}
-                                  disabled={retryingId === entry.id}
-                                  className="p-1.5 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-500 hover:bg-orange-100 active:scale-90 transition-all disabled:opacity-50"
-                                  title="Retry sync"
+
+                            <div className="space-y-3">
+                              {(entries as HistoryEntry[]).map((entry) => (
+                                <Card
+                                  key={entry.id}
+                                  onClick={() => setSelectedEntry(entry)}
+                                  className="relative group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all duration-300 active:scale-98"
                                 >
-                                  <RefreshCw size={14} className={retryingId === entry.id ? 'animate-spin' : ''} />
-                                </button>
-                              )}
-                              <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex-1">
+                                      <p className="font-bold text-slate-800 dark:text-slate-100 text-lg">{entry.summary}</p>
+                                      <div className="flex items-center gap-3 mt-1">
+                                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                                          <Clock size={12} />
+                                          {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        {entry.images && entry.images.length > 0 && (
+                                          <span className="text-xs font-bold text-blue-500 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                                            <ImageIcon size={12} /> {entry.images.length}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {entry.syncedToExcel ? (
+                                        <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
+                                      ) : entry.type !== 'bikes' && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleRetrySync(entry); }}
+                                          disabled={retryingId === entry.id}
+                                          className="p-1.5 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-500 hover:bg-orange-100 active:scale-90 transition-all disabled:opacity-50"
+                                          title="Retry sync"
+                                        >
+                                          <RefreshCw size={14} className={retryingId === entry.id ? 'animate-spin' : ''} />
+                                        </button>
+                                      )}
+                                      <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
+                                    </div>
+                                  </div>
+                                </Card>
+                              ))}
                             </div>
                           </div>
-                        </Card>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
