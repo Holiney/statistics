@@ -40,6 +40,17 @@ export interface Zone {
   createdAt: string;
 }
 
+export type CategoryKind = 'personnel_zone' | 'bike_category';
+
+export interface Category {
+  id: string;
+  kind: CategoryKind;
+  name: string;
+  active: boolean;
+  order: number;     // for stable display order
+  createdAt: string;
+}
+
 export interface HistoryEntry {
   id: string;
   date: string;

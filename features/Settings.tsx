@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { TRANSLATIONS } from '../constants';
-import { AppSettings, Language, TelegramUser, Zone } from '../types';
+import { AppSettings, Language, TelegramUser, Zone, Category, CategoryKind } from '../types';
 import { Moon, Sun, Smartphone, Link, User, Trash2, ShieldCheck, ShieldOff, Lock, Plus, EyeOff, Eye } from 'lucide-react';
 import { Card } from '../components/UI';
-import { triggerHaptic, generateId } from '../utils';
+import { triggerHaptic } from '../utils';
+import { filterByKind } from '../services/categoriesStore';
 
 interface Props {
   settings: AppSettings;
@@ -15,12 +16,15 @@ interface Props {
   onAdminLogout: () => void;
   zones: Zone[];
   onSaveZone: (zone: Zone) => void;
+  categories: Category[];
+  onSaveCategory: (category: Category) => void;
 }
 
 export const Settings: React.FC<Props> = ({
   settings, updateSettings, user, onReset,
   isAdmin, onAdminLogin, onAdminLogout,
   zones, onSaveZone,
+  categories, onSaveCategory,
 }) => {
   const t = TRANSLATIONS[settings.language];
   const [passwordInput, setPasswordInput] = useState('');
@@ -29,6 +33,27 @@ export const Settings: React.FC<Props> = ({
   const [newRoomLimited, setNewRoomLimited] = useState(false);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [newPersonnelZone, setNewPersonnelZone] = useState('');
+  const [newBikeCategory, setNewBikeCategory] = useState('');
+
+  const personnelZones = filterByKind(categories, 'personnel_zone');
+  const bikeCats = filterByKind(categories, 'bike_category');
+
+  const addCategory = (kind: CategoryKind, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const prefix = kind === 'personnel_zone' ? 'pz' : 'bc';
+    const sameKind = filterByKind(categories, kind);
+    const nextOrder = sameKind.length > 0 ? Math.max(...sameKind.map(c => c.order)) + 1 : 0;
+    onSaveCategory({
+      id: `${prefix}_${trimmed.replace(/\s+/g, '_')}_v${Date.now()}`,
+      kind,
+      name: trimmed,
+      active: true,
+      order: nextOrder,
+      createdAt: new Date().toISOString(),
+    });
+  };
 
   const handleSavePassword = () => {
     const p = newPasswordInput.trim();
@@ -276,6 +301,100 @@ export const Settings: React.FC<Props> = ({
                   />
                   Limited items only (EK13–18)
                 </label>
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {/* Personnel zones — admin only */}
+        {isAdmin && (
+          <section>
+            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-2">
+              Personnel Zones
+            </label>
+            <Card className="space-y-3">
+              <div className="space-y-2">
+                {personnelZones.map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between gap-2 py-1">
+                    <span className={`font-mono font-bold text-sm ${cat.active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 line-through'}`}>
+                      {cat.name}
+                    </span>
+                    <button
+                      onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      title={cat.active ? 'Deactivate' : 'Activate'}
+                    >
+                      {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                <span className="text-xs font-medium text-slate-500">Add new zone</span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newPersonnelZone}
+                    onChange={e => setNewPersonnelZone(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (addCategory('personnel_zone', newPersonnelZone), setNewPersonnelZone(''))}
+                    placeholder="e.g. Zone 270"
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2.5 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    onClick={() => { addCategory('personnel_zone', newPersonnelZone); setNewPersonnelZone(''); }}
+                    className="px-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {/* Bike categories — admin only */}
+        {isAdmin && (
+          <section>
+            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-2">
+              Bike Categories
+            </label>
+            <Card className="space-y-3">
+              <div className="space-y-2">
+                {bikeCats.map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between gap-2 py-1">
+                    <span className={`font-mono font-bold text-sm ${cat.active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 line-through'}`}>
+                      {cat.name}
+                    </span>
+                    <button
+                      onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      title={cat.active ? 'Deactivate' : 'Activate'}
+                    >
+                      {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                <span className="text-xs font-medium text-slate-500">Add new category</span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newBikeCategory}
+                    onChange={e => setNewBikeCategory(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (addCategory('bike_category', newBikeCategory), setNewBikeCategory(''))}
+                    placeholder="e.g. Tandem"
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2.5 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    onClick={() => { addCategory('bike_category', newBikeCategory); setNewBikeCategory(''); }}
+                    className="px-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
               </div>
             </Card>
           </section>

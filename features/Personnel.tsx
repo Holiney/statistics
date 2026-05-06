@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Card, BottomSheet } from '../components/UI';
-import { ZONES, TRANSLATIONS, APP_VERSION } from '../constants';
-import { AppSettings, HistoryEntry } from '../types';
+import { TRANSLATIONS, APP_VERSION } from '../constants';
+import { AppSettings, HistoryEntry, Category } from '../types';
 import { UsersRound, Car, Copy, Minus, Plus, Trash2, CloudUpload } from 'lucide-react';
 import { triggerHaptic, copyToClipboard, getTodayDateString, generateId, getISOWeek } from '../utils';
+import { filterByKind } from '../services/categoriesStore';
 
 interface Props {
   settings: AppSettings;
@@ -11,10 +12,13 @@ interface Props {
   onSaveHistory: (entry: HistoryEntry) => void;
   data: Record<string, number>;
   onUpdate: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  categories: Category[];
+  categoriesLoaded: boolean;
 }
 
-export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts }) => {
+export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, data: counts, onUpdate: setCounts, categories, categoriesLoaded }) => {
   const t = TRANSLATIONS[settings.language];
+  const zones = filterByKind(categories, 'personnel_zone').filter(c => c.active).map(c => c.name);
   const [activeZone, setActiveZone] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -162,7 +166,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
   const handleCopy = async () => {
     let report = `${getTodayDateString()}\n`;
-    ZONES.forEach(zone => {
+    zones.forEach(zone => {
       const count = getCount(zone);
       if (count > 0) report += `${zone}: ${count}\n`;
     });
@@ -187,10 +191,19 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     }
   };
 
+  if (!categoriesLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
+        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <p className="text-sm font-medium text-slate-500">Loading zones...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-20">
       <div className="grid grid-cols-2 gap-4">
-        <Card 
+        <Card
           onClick={() => setActiveZone('parking')}
           className="col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 border-none !text-white shadow-lg shadow-slate-500/10 p-6"
         >
@@ -208,7 +221,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
           </div>
         </Card>
 
-        {ZONES.map(zone => {
+        {zones.map(zone => {
           const count = getCount(zone);
           const isActive = count > 0;
           return (
