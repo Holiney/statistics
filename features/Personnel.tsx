@@ -76,19 +76,18 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
                       String(now.getMinutes()).padStart(2, '0') + ':' + 
                       String(now.getSeconds()).padStart(2, '0');
 
-    // STRICT KEY MAPPING to match "Aantal" headers (220, 230, ..., AUTO's)
+    // Include ALL active zones in payload (0 for empty) so the Google Script
+    // can detect new columns and create them automatically.
     const mappedItems: Record<string, number> = {};
-    Object.entries(counts).forEach(([key, val]) => {
-      const numVal = Number(val);
-      if (key === 'parking') {
-        mappedItems["AUTO's"] = numVal;
-      } else if (key.startsWith('Zone ')) {
-        // "Zone 220" -> "220"
-        mappedItems[key.replace('Zone ', '')] = numVal;
+    zones.forEach(zoneName => {
+      const numVal = Number(counts[zoneName] || 0);
+      if (zoneName.startsWith('Zone ')) {
+        mappedItems[zoneName.replace('Zone ', '')] = numVal;
       } else {
-        mappedItems[key] = numVal;
+        mappedItems[zoneName] = numVal;
       }
     });
+    mappedItems["AUTO's"] = Number(counts['parking'] || 0);
 
     const payload = {
       date: localDate,
@@ -96,6 +95,7 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       week: getISOWeek(now),
       type: 'personnel',
       items: mappedItems,
+      allZones: zones.map(z => z.startsWith('Zone ') ? z.replace('Zone ', '') : z),
     };
 
     let synced = false;

@@ -13,8 +13,8 @@ import { Settings } from './features/Settings';
 import { Toast } from './components/UI';
 import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
-import { seedZonesIfEmpty, saveZone } from './services/zonesStore';
-import { seedCategoriesIfEmpty, saveCategory } from './services/categoriesStore';
+import { seedZonesIfEmpty, saveZone, deleteZone } from './services/zonesStore';
+import { seedCategoriesIfEmpty, saveCategory, deleteCategory } from './services/categoriesStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -93,6 +93,16 @@ const App: React.FC = () => {
       return [...prev, category];
     });
     saveCategory(category).catch(err => console.error('Failed to save category', err));
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+    deleteCategory(id).catch(err => console.error('Failed to delete category', err));
+  };
+
+  const handleDeleteZone = (id: string) => {
+    setZones(prev => prev.filter(z => z.id !== id));
+    deleteZone(id).catch(err => console.error('Failed to delete zone', err));
   };
 
   // --- AUTO CLEAR LOGIC & STATE INITIALIZATION ---
@@ -398,8 +408,10 @@ const App: React.FC = () => {
             onAdminLogout={handleAdminLogout}
             zones={zones}
             onSaveZone={handleSaveZone}
+            onDeleteZone={handleDeleteZone}
             categories={categories}
             onSaveCategory={handleSaveCategory}
+            onDeleteCategory={handleDeleteCategory}
           />
         )}
       </main>

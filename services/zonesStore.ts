@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   setDoc,
@@ -44,4 +45,8 @@ export async function seedZonesIfEmpty(): Promise<Zone[]> {
 
 export async function saveZone(zone: Zone): Promise<void> {
   await setDoc(doc(db, COLLECTION, zone.id), zone);
+}
+
+export async function deleteZone(id: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTION, id));
 }
