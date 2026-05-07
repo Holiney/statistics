@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   setDoc,
@@ -59,6 +60,10 @@ export async function seedCategoriesIfEmpty(): Promise<Category[]> {
 
 export async function saveCategory(category: Category): Promise<void> {
   await setDoc(doc(db, COLLECTION, category.id), category);
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTION, id));
 }
 
 export function filterByKind(categories: Category[], kind: CategoryKind): Category[] {

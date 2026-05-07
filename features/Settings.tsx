@@ -16,15 +16,17 @@ interface Props {
   onAdminLogout: () => void;
   zones: Zone[];
   onSaveZone: (zone: Zone) => void;
+  onDeleteZone: (id: string) => void;
   categories: Category[];
   onSaveCategory: (category: Category) => void;
+  onDeleteCategory: (id: string) => void;
 }
 
 export const Settings: React.FC<Props> = ({
   settings, updateSettings, user, onReset,
   isAdmin, onAdminLogin, onAdminLogout,
-  zones, onSaveZone,
-  categories, onSaveCategory,
+  zones, onSaveZone, onDeleteZone,
+  categories, onSaveCategory, onDeleteCategory,
 }) => {
   const t = TRANSLATIONS[settings.language];
   const [passwordInput, setPasswordInput] = useState('');
@@ -257,13 +259,26 @@ export const Settings: React.FC<Props> = ({
                       {zone.name}
                       {zone.isLimited && <span className="ml-2 text-[10px] font-normal text-slate-400">limited</span>}
                     </span>
-                    <button
-                      onClick={() => onSaveZone({ ...zone, active: !zone.active })}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      title={zone.active ? 'Deactivate' : 'Activate'}
-                    >
-                      {zone.active ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onSaveZone({ ...zone, active: !zone.active })}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title={zone.active ? 'Deactivate' : 'Activate'}
+                      >
+                        {zone.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete "${zone.name}" permanently?`)) {
+                            onDeleteZone(zone.id);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -319,13 +334,26 @@ export const Settings: React.FC<Props> = ({
                     <span className={`font-mono font-bold text-sm ${cat.active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 line-through'}`}>
                       {cat.name}
                     </span>
-                    <button
-                      onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      title={cat.active ? 'Deactivate' : 'Activate'}
-                    >
-                      {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title={cat.active ? 'Deactivate' : 'Activate'}
+                      >
+                        {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete "${cat.name}" permanently?`)) {
+                            onDeleteCategory(cat.id);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -366,13 +394,26 @@ export const Settings: React.FC<Props> = ({
                     <span className={`font-mono font-bold text-sm ${cat.active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 line-through'}`}>
                       {cat.name}
                     </span>
-                    <button
-                      onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      title={cat.active ? 'Deactivate' : 'Activate'}
-                    >
-                      {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onSaveCategory({ ...cat, active: !cat.active })}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title={cat.active ? 'Deactivate' : 'Activate'}
+                      >
+                        {cat.active ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete "${cat.name}" permanently?`)) {
+                            onDeleteCategory(cat.id);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
