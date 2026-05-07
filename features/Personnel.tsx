@@ -98,6 +98,9 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       allZones: zones.map(z => z.startsWith('Zone ') ? z.replace('Zone ', '') : z),
     };
 
+    console.log('[Personnel Sync] Active zones from Firestore:', zones);
+    console.log('[Personnel Sync] Payload being sent:', JSON.stringify(payload, null, 2));
+
     let synced = false;
     const isMicrosoft = settings.syncProvider === 'microsoft';
     const url = isMicrosoft ? settings.microsoftWebhookUrl : settings.webhookUrl;
