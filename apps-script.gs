@@ -26,16 +26,21 @@ function doPost(e) {
 
       if (param.allZones && Array.isArray(param.allZones)) {
         const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
-          .getValues()[0].map(h => h.toString().trim());
-        Logger.log("Existing headers: " + existingHeaders.join(", "));
+          .getDisplayValues()[0].map(h => h.toString().trim());
+        Logger.log("Existing headers (display): " + existingHeaders.join(", "));
 
         const templateCell = sheet.getRange(1, 2);
         param.allZones.forEach(zone => {
           const zoneStr = zone.toString().trim();
           if (zoneStr && !existingHeaders.includes(zoneStr)) {
             const newColIdx = sheet.getLastColumn() + 1;
-            sheet.getRange(1, newColIdx).setValue(zoneStr);
+            const newCell = sheet.getRange(1, newColIdx);
+            // Force text format BEFORE setValue so leading zeros ("040") are preserved
+            newCell.setNumberFormat('@');
+            newCell.setValue(zoneStr);
             templateCell.copyFormatToRange(sheet, newColIdx, newColIdx, 1, 1);
+            // Re-apply text format after copyFormat (which may have overwritten it)
+            newCell.setNumberFormat('@');
             existingHeaders.push(zoneStr);
             Logger.log("ADDED new column at " + newColIdx + ": " + zoneStr);
           } else {
@@ -78,7 +83,7 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => h.toString().trim());
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => h.toString().trim());
       Logger.log("Headers after add: " + headers.join(", "));
 
       for (const [key, val] of Object.entries(param.items)) {
@@ -172,7 +177,7 @@ function testAddColumns() {
   const allZones = ["220", "230", "240", "250", "260", "520", "040", "050"];
 
   const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
-    .getValues()[0].map(h => h.toString().trim());
+    .getDisplayValues()[0].map(h => h.toString().trim());
 
   const templateCell = sheet.getRange(1, 2);
 
@@ -181,12 +186,29 @@ function testAddColumns() {
   allZones.forEach(zone => {
     if (!existingHeaders.includes(zone)) {
       const newColIdx = sheet.getLastColumn() + 1;
-      sheet.getRange(1, newColIdx).setValue(zone);
+      const newCell = sheet.getRange(1, newColIdx);
+      newCell.setNumberFormat('@');
+      newCell.setValue(zone);
       templateCell.copyFormatToRange(sheet, newColIdx, newColIdx, 1, 1);
+      newCell.setNumberFormat('@');
       existingHeaders.push(zone);
       Logger.log("Added new column: " + zone);
     } else {
       Logger.log("Already exists: " + zone);
     }
   });
+}
+
+// Run this ONCE to fix existing zone columns that lost leading zeros.
+// It re-formats all header cells in row 1 as text — your existing data
+// is preserved, but "40" will display as "40" (you may need to manually
+// rename it to "040" in the cell if the app expects "040").
+function fixHeadersTextFormat() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  const lastCol = sheet.getLastColumn();
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  headerRange.setNumberFormat('@');
+  Logger.log("Set text format on all " + lastCol + " header cells.");
+  Logger.log("Headers: " + headerRange.getDisplayValues()[0].join(", "));
 }
