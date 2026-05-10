@@ -30,8 +30,6 @@ function doPost(e) {
         PropertiesService.getScriptProperties()
           .setProperty('activeZones', JSON.stringify(param.allZones));
 
-        ensureConditionalFormatting(sheet);
-
         const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
           .getDisplayValues()[0].map(h => h.toString().trim());
         Logger.log("Existing headers (display): " + existingHeaders.join(", "));
@@ -197,78 +195,49 @@ const WORKDAY_BG = '#e8f0fe';   // Mon-Fri rows on active columns — light blue
 const WEEKEND_BG = '#cccccc';   // Sat-Sun rows on active columns — medium grey
 
 // Runs automatically every time someone opens the spreadsheet. Reads the last
-// active zone list from ScriptProperties (saved by doPost) and re-applies the
-// hidden-column greying. The weekend coloring is handled by a conditional
-// formatting rule that reacts to new rows automatically — no script needed.
+// active zone list from ScriptProperties (saved by doPost) and re-applies all
+// background colors — weekday/weekend fill on active columns, pink fill on
+// hidden zones. No reliance on conditional formatting.
 function onOpen(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Aantal');
   if (!sheet) return;
 
-  ensureConditionalFormatting(sheet);
-
   const stored = PropertiesService.getScriptProperties().getProperty('activeZones');
+  let zones = [];
   if (stored) {
-    try {
-      applyZoneVisualState(sheet, JSON.parse(stored));
-    } catch (err) {
-      Logger.log('onOpen failed to apply visual state: ' + err);
-    }
+    try { zones = JSON.parse(stored); } catch (err) { zones = []; }
   }
+  applyZoneVisualState(sheet, zones);
 }
 
-// Installs two conditional-formatting rules on Aantal!A2:ZZ:
-//   - Sat/Sun rows -> WEEKEND_BG (medium grey)
-//   - Mon-Fri rows -> WORKDAY_BG (light blue)
-// Both check that column A has a date so empty rows below the data stay clean.
-// Replaces any previously-installed Work Stats rules; other rules are kept.
-function ensureConditionalFormatting(sheet) {
-  const range = sheet.getRange("A2:ZZ");
-
-  // Handles both real Date cells (ISNUMBER true) and text dates like
-  // "05.01.2026" (DATEVALUE parses dd.mm.yyyy in this locale). IFERROR
-  // wraps the comparison so non-date rows fall through cleanly.
-  const weekendFormula = '=AND($A2<>"",IFERROR(WEEKDAY(IF(ISNUMBER($A2),$A2,DATEVALUE($A2)),2)>5,FALSE))';
-  const workdayFormula = '=AND($A2<>"",IFERROR(WEEKDAY(IF(ISNUMBER($A2),$A2,DATEVALUE($A2)),2)<6,FALSE))';
-  const ourFormulas = [weekendFormula, workdayFormula];
-
-  // Known prior versions of our formulas, so we drop them all when re-installing.
-  const legacyFormulas = [
-    '=AND($A2<>"",WEEKDAY($A2,2)>5)',
-    '=AND($A2<>"",WEEKDAY($A2,2)<6)',
-  ];
-  const isOurs = (f) => ourFormulas.indexOf(f) !== -1 || legacyFormulas.indexOf(f) !== -1;
-
-  // Drop any previous Work Stats rules so we can re-install fresh ones
-  // (idempotent: re-running just reinstalls, no duplicates accumulate).
-  const kept = sheet.getConditionalFormatRules().filter(r => {
-    const cond = r.getBooleanCondition && r.getBooleanCondition();
-    if (!cond) return true;
-    const vals = cond.getCriteriaValues && cond.getCriteriaValues();
-    if (!vals) return true;
-    return !isOurs(vals[0]);
-  });
-
-  const weekendRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(weekendFormula)
-    .setBackground(WEEKEND_BG)
-    .setRanges([range])
-    .build();
-
-  const workdayRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(workdayFormula)
-    .setBackground(WORKDAY_BG)
-    .setRanges([range])
-    .build();
-
-  // Weekend rule goes first so it wins over the workday rule on Sat/Sun rows.
-  sheet.setConditionalFormatRules([weekendRule, workdayRule].concat(kept));
-  Logger.log('Installed weekend + workday conditional-formatting rules.');
+// Returns true if a column-A cell value parses as Saturday or Sunday.
+// Handles both real Date cells and dd.mm.yyyy text dates the app produces.
+function isWeekendDate(cell) {
+  let d = null;
+  if (cell instanceof Date) {
+    d = cell;
+  } else if (typeof cell === 'string' && cell.indexOf('.') !== -1) {
+    const p = cell.split('.');
+    if (p.length === 3) {
+      const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      if (!isNaN(dt.getTime())) d = dt;
+    }
+  } else if (typeof cell === 'number' && cell > 0) {
+    // Sheets serial date (days since 1899-12-30)
+    d = new Date(Date.UTC(1899, 11, 30) + cell * 86400000);
+  }
+  if (!d) return null;
+  const day = d.getDay();
+  return day === 0 || day === 6;
 }
 
-// Greys the body (rows 2+) of any column whose header isn't in `activeZones`,
-// and clears manual fill on active columns so the weekend conditional rule
-// can paint Sat/Sun rows. Header row 1 is left untouched.
+// Repaints rows 2+ of the Aantal sheet in one batch:
+//   - Hidden / deleted zone columns -> HIDDEN_BG (whole body, all rows)
+//   - Active columns on Sat/Sun rows -> WEEKEND_BG
+//   - Active columns on Mon-Fri rows -> WORKDAY_BG
+//   - Rows with no date in column A -> null (left blank)
+// Header row 1 is never touched.
 function applyZoneVisualState(sheet, activeZones) {
   const lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
@@ -276,26 +245,41 @@ function applyZoneVisualState(sheet, activeZones) {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
     .map(h => h.toString().trim());
+  const dateCells = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
 
   const activeSet = {};
   activeZones.forEach(z => { activeSet[z.toString().trim()] = true; });
 
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i];
-    if (!header) continue;
+  // Per-column flag: true if this column should be greyed (hidden/deleted).
+  const isHiddenCol = headers.map(h => {
+    if (!h) return false;
+    if (PROTECTED_HEADERS.indexOf(h) !== -1) return false;
+    return !activeSet[h];
+  });
 
-    const bodyRange = sheet.getRange(2, i + 1, lastRow - 1, 1);
-    const isProtected = PROTECTED_HEADERS.indexOf(header) !== -1;
+  // Per-row weekend flag (null if no parseable date in column A).
+  const weekendRow = dateCells.map(r => isWeekendDate(r[0]));
 
-    if (isProtected || activeSet[header]) {
-      // Clear manual background so conditional formatting (weekend rule) shows.
-      bodyRange.setBackground(null);
-    } else {
-      // Hidden / deleted zone — solid grey overrides the weekend CF rule.
-      bodyRange.setBackground(HIDDEN_BG);
-      Logger.log("Greyed col " + (i + 1) + " (" + header + ")");
+  const colors = [];
+  for (let r = 0; r < dateCells.length; r++) {
+    const row = [];
+    const w = weekendRow[r];
+    for (let c = 0; c < headers.length; c++) {
+      if (isHiddenCol[c]) {
+        row.push(HIDDEN_BG);
+      } else if (w === true) {
+        row.push(WEEKEND_BG);
+      } else if (w === false) {
+        row.push(WORKDAY_BG);
+      } else {
+        row.push(null);
+      }
     }
+    colors.push(row);
   }
+
+  sheet.getRange(2, 1, lastRow - 1, lastCol).setBackgrounds(colors);
+  Logger.log("Repainted body: " + (lastRow - 1) + " rows x " + lastCol + " cols");
 }
 
 function testAddColumns() {
@@ -303,8 +287,6 @@ function testAddColumns() {
   const sheet = ss.getSheetByName('Aantal');
 
   const allZones = ["220", "230", "240", "250", "260", "520", "040", "050"];
-
-  ensureConditionalFormatting(sheet);
 
   const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
     .getDisplayValues()[0].map(h => h.toString().trim());
@@ -334,18 +316,30 @@ function testAddColumns() {
   applyZoneVisualState(sheet, allZones);
 }
 
-// Run this ONCE manually to clean up any stray manual backgrounds left over
-// from the previous version of applyZoneVisualState (which painted every cell).
-// After this runs, the conditional-formatting weekend rule + per-column hidden
-// greying take over, and you don't need to re-run it.
-function clearAllManualBackgrounds() {
+// Run this manually any time to re-paint the whole Aantal body using the last
+// active-zones list from ScriptProperties. Useful for testing / fixing without
+// needing a sync from the app.
+function repaintNow() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Aantal');
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow < 2 || lastCol < 1) return;
-  sheet.getRange(2, 1, lastRow - 1, lastCol).setBackground(null);
-  Logger.log("Cleared manual backgrounds on body (rows 2-" + lastRow + ", cols 1-" + lastCol + ")");
+  if (!sheet) return;
+  const stored = PropertiesService.getScriptProperties().getProperty('activeZones');
+  let zones = [];
+  if (stored) {
+    try { zones = JSON.parse(stored); } catch (err) { zones = []; }
+  }
+  Logger.log("Active zones from props: " + JSON.stringify(zones));
+  applyZoneVisualState(sheet, zones);
+}
+
+// Drops any leftover conditional-formatting rules from the previous CF-based
+// approach so they don't conflict with the new direct painting.
+function clearConditionalFormatting() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  if (!sheet) return;
+  sheet.setConditionalFormatRules([]);
+  Logger.log("Cleared all conditional formatting rules on Aantal.");
 }
 
 // Run this ONCE to fix existing zone columns that lost leading zeros.
