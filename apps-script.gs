@@ -213,23 +213,34 @@ function onOpen(e) {
 
 // Returns true if a column-A cell value parses as Saturday or Sunday.
 // Handles both real Date cells and dd.mm.yyyy text dates the app produces.
-function isWeekendDate(cell) {
+// tz must be the spreadsheet timezone string (e.g. "Europe/Brussels") to
+// avoid UTC-offset errors when Apps Script's getDay() disagrees with local noon.
+function isWeekendDate(cell, tz) {
   let d = null;
   if (cell instanceof Date) {
     d = cell;
   } else if (typeof cell === 'string' && cell.indexOf('.') !== -1) {
     const p = cell.split('.');
     if (p.length === 3) {
-      const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      // Build as UTC so local-TZ offset in new Date(y,m,d) doesn't shift the day.
+      const dt = new Date(Date.UTC(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0])));
       if (!isNaN(dt.getTime())) d = dt;
     }
   } else if (typeof cell === 'number' && cell > 0) {
-    // Sheets serial date (days since 1899-12-30)
     d = new Date(Date.UTC(1899, 11, 30) + cell * 86400000);
   }
-  if (!d) return null;
-  const day = d.getDay();
-  return day === 0 || day === 6;
+  if (!d || isNaN(d.getTime())) return null;
+  // Format as yyyy-MM-dd in the spreadsheet TZ, then re-parse as UTC midnight
+  // so getUTCDay() is immune to the execution environment's TZ offset.
+  try {
+    const s = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+    const parts = s.split('-');
+    const utcD = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+    const day = utcD.getUTCDay(); // 0=Sun, 6=Sat
+    return day === 0 || day === 6;
+  } catch (e) {
+    return null;
+  }
 }
 
 // Repaints rows 2+ of the Aantal sheet in one batch:
@@ -243,12 +254,15 @@ function applyZoneVisualState(sheet, activeZones) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2 || lastCol < 1) return;
 
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
   const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
     .map(h => h.toString().trim());
   const dateCells = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
 
   const activeSet = {};
   activeZones.forEach(z => { activeSet[z.toString().trim()] = true; });
+  Logger.log("applyZoneVisualState: tz=" + tz + " activeZones=" + JSON.stringify(activeZones));
+  Logger.log("headers=" + JSON.stringify(headers));
 
   // Per-column flag: true if this column should be greyed (hidden/deleted).
   const isHiddenCol = headers.map(h => {
@@ -258,7 +272,7 @@ function applyZoneVisualState(sheet, activeZones) {
   });
 
   // Per-row weekend flag (null if no parseable date in column A).
-  const weekendRow = dateCells.map(r => isWeekendDate(r[0]));
+  const weekendRow = dateCells.map(r => isWeekendDate(r[0], tz));
 
   const colors = [];
   for (let r = 0; r < dateCells.length; r++) {
@@ -354,4 +368,38 @@ function fixHeadersTextFormat() {
   headerRange.setNumberFormat('@');
   Logger.log("Set text format on all " + lastCol + " header cells.");
   Logger.log("Headers: " + headerRange.getDisplayValues()[0].join(", "));
+}
+
+// Run this to diagnose painting issues. Shows stored zones, headers, and
+// how the first 5 date cells are interpreted (type, value, weekend flag).
+function debugZoneState() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  if (!sheet) { Logger.log("Sheet 'Aantal' not found!"); return; }
+
+  const stored = PropertiesService.getScriptProperties().getProperty('activeZones');
+  Logger.log("Stored activeZones: " + stored);
+
+  const tz = ss.getSpreadsheetTimeZone();
+  Logger.log("Spreadsheet timezone: " + tz);
+
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  Logger.log("Dimensions: " + lastRow + " rows x " + lastCol + " cols");
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  Logger.log("Headers: " + JSON.stringify(headers));
+
+  const sampleCount = Math.min(7, lastRow - 1);
+  if (sampleCount > 0) {
+    const dateCells = sheet.getRange(2, 1, sampleCount, 1).getValues();
+    dateCells.forEach(function(row, i) {
+      const cell = row[0];
+      const isWeekend = isWeekendDate(cell, tz);
+      Logger.log("Row " + (i + 2) + ": type=" + typeof cell +
+                 " value=" + JSON.stringify(cell) +
+                 " isDate=" + (cell instanceof Date) +
+                 " isWeekend=" + isWeekend);
+    });
+  }
 }
