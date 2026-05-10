@@ -25,6 +25,13 @@ function doPost(e) {
       if (!sheet) throw new Error("Аркуш 'Aantal' не знайдено!");
 
       if (param.allZones && Array.isArray(param.allZones)) {
+        // Persist active zones so onOpen() / time triggers can re-apply
+        // greying without needing a fresh sync from the app.
+        PropertiesService.getScriptProperties()
+          .setProperty('activeZones', JSON.stringify(param.allZones));
+
+        ensureConditionalFormatting(sheet);
+
         const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
           .getDisplayValues()[0].map(h => h.toString().trim());
         Logger.log("Existing headers (display): " + existingHeaders.join(", "));
@@ -55,9 +62,9 @@ function doPost(e) {
           }
         });
 
-        // Sync visual state: grey out body of any column whose header isn't in the
-        // active zones list (deleted / hidden in the app). Restore default fill on
-        // active columns so re-activated zones lose their grey overlay.
+        // Sync visual state: grey out body of any column whose header isn't in
+        // active zones (deleted / hidden in the app). Active columns are left
+        // with no manual fill so the conditional-formatting weekend rule shows.
         SpreadsheetApp.flush();
         applyZoneVisualState(sheet, param.allZones);
         SpreadsheetApp.flush();
@@ -185,12 +192,60 @@ function getWeekNumber(d) {
 
 // Columns that must never be greyed out regardless of allZones content.
 const PROTECTED_HEADERS = ['Datum', "AUTO's"];
-// Light grey fill for hidden/deleted zones (visible against header dark bg).
-const HIDDEN_BG = '#d9d9d9';
+const HIDDEN_BG  = '#f4cccc';   // Hidden/deleted columns — light pink
+const WEEKEND_BG = '#d9d9d9';   // Sat-Sun rows on active columns
+const CF_RULE_TAG = 'WORK_STATS_WEEKEND_RULE';
 
-// Greys out the body (row 2+) of any column whose header isn't in `activeZones`
-// and restores default fill for columns whose header IS in activeZones.
-// Header row is left untouched so column titles stay readable.
+// Runs automatically every time someone opens the spreadsheet. Reads the last
+// active zone list from ScriptProperties (saved by doPost) and re-applies the
+// hidden-column greying. The weekend coloring is handled by a conditional
+// formatting rule that reacts to new rows automatically — no script needed.
+function onOpen(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  if (!sheet) return;
+
+  ensureConditionalFormatting(sheet);
+
+  const stored = PropertiesService.getScriptProperties().getProperty('activeZones');
+  if (stored) {
+    try {
+      applyZoneVisualState(sheet, JSON.parse(stored));
+    } catch (err) {
+      Logger.log('onOpen failed to apply visual state: ' + err);
+    }
+  }
+}
+
+// Installs a single conditional-formatting rule on Aantal!A2:ZZ that fills
+// rows whose Datum column is Sat/Sun with WEEKEND_BG. Existing identical rule
+// is preserved; any other rules on the sheet are kept untouched. Idempotent.
+function ensureConditionalFormatting(sheet) {
+  const range = sheet.getRange("A2:ZZ");
+  const existing = sheet.getConditionalFormatRules();
+
+  const formula = '=AND($A2<>"",WEEKDAY($A2,2)>5)';
+  const already = existing.some(r => {
+    const cond = r.getBooleanCondition && r.getBooleanCondition();
+    if (!cond) return false;
+    const vals = cond.getCriteriaValues && cond.getCriteriaValues();
+    return vals && vals[0] === formula;
+  });
+  if (already) return;
+
+  const rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(formula)
+    .setBackground(WEEKEND_BG)
+    .setRanges([range])
+    .build();
+
+  sheet.setConditionalFormatRules(existing.concat([rule]));
+  Logger.log('Installed weekend conditional-formatting rule.');
+}
+
+// Greys the body (rows 2+) of any column whose header isn't in `activeZones`,
+// and clears manual fill on active columns so the weekend conditional rule
+// can paint Sat/Sun rows. Header row 1 is left untouched.
 function applyZoneVisualState(sheet, activeZones) {
   const lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
@@ -198,17 +253,22 @@ function applyZoneVisualState(sheet, activeZones) {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
     .map(h => h.toString().trim());
+
   const activeSet = {};
   activeZones.forEach(z => { activeSet[z.toString().trim()] = true; });
 
   for (let i = 0; i < headers.length; i++) {
     const header = headers[i];
-    if (!header || PROTECTED_HEADERS.indexOf(header) !== -1) continue;
+    if (!header) continue;
+
     const bodyRange = sheet.getRange(2, i + 1, lastRow - 1, 1);
-    if (activeSet[header]) {
+    const isProtected = PROTECTED_HEADERS.indexOf(header) !== -1;
+
+    if (isProtected || activeSet[header]) {
+      // Clear manual background so conditional formatting (weekend rule) shows.
       bodyRange.setBackground(null);
-      Logger.log("Restored col " + (i + 1) + " (" + header + ")");
     } else {
+      // Hidden / deleted zone — solid grey overrides the weekend CF rule.
       bodyRange.setBackground(HIDDEN_BG);
       Logger.log("Greyed col " + (i + 1) + " (" + header + ")");
     }
@@ -220,6 +280,8 @@ function testAddColumns() {
   const sheet = ss.getSheetByName('Aantal');
 
   const allZones = ["220", "230", "240", "250", "260", "520", "040", "050"];
+
+  ensureConditionalFormatting(sheet);
 
   const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
     .getDisplayValues()[0].map(h => h.toString().trim());
@@ -245,7 +307,22 @@ function testAddColumns() {
     }
   });
 
+  PropertiesService.getScriptProperties().setProperty('activeZones', JSON.stringify(allZones));
   applyZoneVisualState(sheet, allZones);
+}
+
+// Run this ONCE manually to clean up any stray manual backgrounds left over
+// from the previous version of applyZoneVisualState (which painted every cell).
+// After this runs, the conditional-formatting weekend rule + per-column hidden
+// greying take over, and you don't need to re-run it.
+function clearAllManualBackgrounds() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return;
+  sheet.getRange(2, 1, lastRow - 1, lastCol).setBackground(null);
+  Logger.log("Cleared manual backgrounds on body (rows 2-" + lastRow + ", cols 1-" + lastCol + ")");
 }
 
 // Run this ONCE to fix existing zone columns that lost leading zeros.
