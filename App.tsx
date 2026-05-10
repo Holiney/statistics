@@ -100,15 +100,19 @@ const App: React.FC = () => {
     setCategories(prev => prev.filter(c => c.id !== id));
     deleteCategory(id).catch(err => console.error('Failed to delete category', err));
 
-    // For personnel zones, also remove the matching column from the Aantal sheet.
-    if (cat && cat.kind === 'personnel_zone' && settings.syncProvider === 'google' && settings.webhookUrl) {
+    // For personnel zones, also remove the matching column from the sheet.
+    if (cat && cat.kind === 'personnel_zone') {
       const zoneName = cat.name.startsWith('Zone ') ? cat.name.replace('Zone ', '') : cat.name;
-      fetch(settings.webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ type: 'deletePersonnelColumn', zone: zoneName }),
-      }).catch(err => console.error('Failed to delete sheet column', err));
+      const isGoogle = settings.syncProvider === 'google';
+      const url = isGoogle ? settings.webhookUrl : settings.microsoftWebhookUrl;
+      if (url) {
+        fetch(url, {
+          method: 'POST',
+          mode: isGoogle ? 'no-cors' : 'cors',
+          headers: { 'Content-Type': isGoogle ? 'text/plain' : 'application/json' },
+          body: JSON.stringify({ type: 'deletePersonnelColumn', zone: zoneName }),
+        }).catch(err => console.error('Failed to delete sheet column', err));
+      }
     }
   };
 
