@@ -185,12 +185,33 @@ function getWeekNumber(d) {
 
 // Columns that must never be greyed out regardless of allZones content.
 const PROTECTED_HEADERS = ['Datum', "AUTO's"];
-// Light grey fill for hidden/deleted zones (visible against header dark bg).
-const HIDDEN_BG = '#d9d9d9';
+// Body background palette (header row 1 is never touched).
+const WORKDAY_BG = '#ffffff';   // Mon-Fri on active columns
+const WEEKEND_BG = '#d9d9d9';   // Sat-Sun on active columns (week separator)
+const HIDDEN_BG  = '#f4cccc';   // Hidden/deleted columns — light pink
 
-// Greys out the body (row 2+) of any column whose header isn't in `activeZones`
-// and restores default fill for columns whose header IS in activeZones.
-// Header row is left untouched so column titles stay readable.
+// Returns true if cell value parses as a Saturday or Sunday.
+function isWeekendDate(cell) {
+  let d = null;
+  if (cell instanceof Date) {
+    d = cell;
+  } else if (typeof cell === 'string' && cell.indexOf('.') !== -1) {
+    const p = cell.split('.');
+    if (p.length === 3) {
+      const dt = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      if (!isNaN(dt.getTime())) d = dt;
+    }
+  }
+  if (!d) return false;
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
+// Repaints the body (rows 2+) of the Aantal sheet:
+//   - Hidden / deleted zone columns         -> HIDDEN_BG (whole body)
+//   - Active columns (zones, AUTO's, Datum) -> WEEKEND_BG on Sat-Sun rows,
+//                                              WORKDAY_BG on Mon-Fri rows
+// Header row stays untouched so column titles keep their original styling.
 function applyZoneVisualState(sheet, activeZones) {
   const lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
@@ -198,21 +219,36 @@ function applyZoneVisualState(sheet, activeZones) {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
     .map(h => h.toString().trim());
+  const dateCells = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+
   const activeSet = {};
   activeZones.forEach(z => { activeSet[z.toString().trim()] = true; });
 
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i];
-    if (!header || PROTECTED_HEADERS.indexOf(header) !== -1) continue;
-    const bodyRange = sheet.getRange(2, i + 1, lastRow - 1, 1);
-    if (activeSet[header]) {
-      bodyRange.setBackground(null);
-      Logger.log("Restored col " + (i + 1) + " (" + header + ")");
-    } else {
-      bodyRange.setBackground(HIDDEN_BG);
-      Logger.log("Greyed col " + (i + 1) + " (" + header + ")");
+  const hiddenCol = headers.map(h => {
+    if (!h) return false;
+    if (PROTECTED_HEADERS.indexOf(h) !== -1) return false;
+    return !activeSet[h];
+  });
+
+  const weekendRow = dateCells.map(r => isWeekendDate(r[0]));
+
+  const colors = [];
+  for (let r = 0; r < weekendRow.length; r++) {
+    const row = [];
+    for (let c = 0; c < headers.length; c++) {
+      if (hiddenCol[c]) {
+        row.push(HIDDEN_BG);
+      } else if (weekendRow[r]) {
+        row.push(WEEKEND_BG);
+      } else {
+        row.push(WORKDAY_BG);
+      }
     }
+    colors.push(row);
   }
+
+  sheet.getRange(2, 1, lastRow - 1, lastCol).setBackgrounds(colors);
+  Logger.log("Repainted body: " + (lastRow - 1) + " rows x " + lastCol + " cols");
 }
 
 function testAddColumns() {
