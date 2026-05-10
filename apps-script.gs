@@ -36,28 +36,53 @@ function doPost(e) {
 
         param.allZones.forEach(zone => {
           const zoneStr = zone.toString().trim();
-          if (zoneStr && !existingHeaders.includes(zoneStr)) {
-            const newColIdx = sheet.getLastColumn() + 1;
-            const lastRow = Math.max(sheet.getLastRow(), 1);
-            const newHeaderCell = sheet.getRange(1, newColIdx);
-
-            // Force text format BEFORE setValue so "040" keeps its leading zero
-            newHeaderCell.setNumberFormat('@');
-            newHeaderCell.setValue(zoneStr);
-
-            // Copy format from the WHOLE template column (B) — not just header —
-            // so the new column gets header background, body fill, borders, font, etc.
-            const templateColRange = sheet.getRange(1, 2, lastRow, 1);
-            templateColRange.copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
-
-            // copyFormatToRange may have overridden numberFormat; re-apply text on header
-            newHeaderCell.setNumberFormat('@');
-
-            existingHeaders.push(zoneStr);
-            Logger.log("ADDED new column at " + newColIdx + ": " + zoneStr);
-          } else {
+          if (!zoneStr || existingHeaders.includes(zoneStr)) {
             Logger.log("Skipped (exists): " + zoneStr);
+            return;
           }
+
+          const lastRow = Math.max(sheet.getLastRow(), 1);
+          const newNum = parseInt(zoneStr, 10);
+
+          // Find the first non-protected zone column whose numeric value exceeds
+          // the new zone, so we can insert before it (sorted order).
+          let insertBeforeCol = null;
+          if (!isNaN(newNum)) {
+            for (let i = 0; i < existingHeaders.length; i++) {
+              const h = existingHeaders[i];
+              if (!h || PROTECTED_HEADERS.indexOf(h) !== -1) continue;
+              const hNum = parseInt(h, 10);
+              if (!isNaN(hNum) && hNum > newNum) {
+                insertBeforeCol = i + 1; // 1-based column index
+                break;
+              }
+            }
+          }
+
+          let newColIdx;
+          if (insertBeforeCol !== null) {
+            sheet.insertColumnBefore(insertBeforeCol);
+            newColIdx = insertBeforeCol;
+            // Shift tracked headers so subsequent zones resolve correctly.
+            existingHeaders.splice(insertBeforeCol - 1, 0, zoneStr);
+            Logger.log("INSERTED column at " + newColIdx + " (before col " + (insertBeforeCol + 1) + "): " + zoneStr);
+          } else {
+            newColIdx = sheet.getLastColumn() + 1;
+            existingHeaders.push(zoneStr);
+            Logger.log("APPENDED new column at " + newColIdx + ": " + zoneStr);
+          }
+
+          // Force text format BEFORE setValue so "040" keeps its leading zero
+          const newHeaderCell = sheet.getRange(1, newColIdx);
+          newHeaderCell.setNumberFormat('@');
+          newHeaderCell.setValue(zoneStr);
+
+          // Copy format from the WHOLE template column (B) — not just header —
+          // so the new column gets header background, body fill, borders, font, etc.
+          sheet.getRange(1, 2, lastRow, 1).copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
+
+          // copyFormatToRange may have overridden numberFormat; re-apply text on header
+          newHeaderCell.setNumberFormat('@');
         });
 
         // Sync visual state: grey out body of any column whose header isn't in
@@ -319,22 +344,37 @@ function testAddColumns() {
   Logger.log("Existing headers: " + existingHeaders.join(", "));
 
   allZones.forEach(zone => {
-    if (!existingHeaders.includes(zone)) {
-      const newColIdx = sheet.getLastColumn() + 1;
-      const lastRow = Math.max(sheet.getLastRow(), 1);
-      const newHeaderCell = sheet.getRange(1, newColIdx);
-      newHeaderCell.setNumberFormat('@');
-      newHeaderCell.setValue(zone);
-
-      const templateColRange = sheet.getRange(1, 2, lastRow, 1);
-      templateColRange.copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
-
-      newHeaderCell.setNumberFormat('@');
-      existingHeaders.push(zone);
-      Logger.log("Added new column: " + zone);
-    } else {
-      Logger.log("Already exists: " + zone);
+    const zoneStr = zone.toString().trim();
+    if (!zoneStr || existingHeaders.includes(zoneStr)) {
+      Logger.log("Already exists: " + zoneStr);
+      return;
     }
+    const lastRow = Math.max(sheet.getLastRow(), 1);
+    const newNum = parseInt(zoneStr, 10);
+    let insertBeforeCol = null;
+    if (!isNaN(newNum)) {
+      for (let i = 0; i < existingHeaders.length; i++) {
+        const h = existingHeaders[i];
+        if (!h || PROTECTED_HEADERS.indexOf(h) !== -1) continue;
+        const hNum = parseInt(h, 10);
+        if (!isNaN(hNum) && hNum > newNum) { insertBeforeCol = i + 1; break; }
+      }
+    }
+    let newColIdx;
+    if (insertBeforeCol !== null) {
+      sheet.insertColumnBefore(insertBeforeCol);
+      newColIdx = insertBeforeCol;
+      existingHeaders.splice(insertBeforeCol - 1, 0, zoneStr);
+    } else {
+      newColIdx = sheet.getLastColumn() + 1;
+      existingHeaders.push(zoneStr);
+    }
+    const newHeaderCell = sheet.getRange(1, newColIdx);
+    newHeaderCell.setNumberFormat('@');
+    newHeaderCell.setValue(zoneStr);
+    sheet.getRange(1, 2, lastRow, 1).copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
+    newHeaderCell.setNumberFormat('@');
+    Logger.log("Added column at " + newColIdx + ": " + zoneStr);
   });
 
   PropertiesService.getScriptProperties().setProperty('activeZones', JSON.stringify(allZones));
