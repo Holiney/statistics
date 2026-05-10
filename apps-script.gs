@@ -190,9 +190,9 @@ function getWeekNumber(d) {
 
 // Columns that must never be greyed out regardless of allZones content.
 const PROTECTED_HEADERS = ['Datum', "AUTO's"];
-const HIDDEN_BG  = '#f4cccc';   // Hidden/deleted columns — light pink
-const WORKDAY_BG = '#e8f0fe';   // Mon-Fri rows on active columns — light blue
-const WEEKEND_BG = '#cccccc';   // Sat-Sun rows on active columns — medium grey
+const HIDDEN_BG  = '#9e9e9e';   // Hidden/deleted columns — dark grey
+const WORKDAY_BG = '#b8d4f0';   // Mon-Fri rows on active columns — blue
+const WEEKEND_BG = '#dde1e7';   // Sat-Sun rows on active columns — soft grey
 
 // Runs automatically every time someone opens the spreadsheet. Reads the last
 // active zone list from ScriptProperties (saved by doPost) and re-applies all
