@@ -26,22 +26,40 @@ function doPost(e) {
 
       if (param.allZones && Array.isArray(param.allZones)) {
         const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
-          .getValues()[0].map(h => h.toString().trim());
-        Logger.log("Existing headers: " + existingHeaders.join(", "));
+          .getDisplayValues()[0].map(h => h.toString().trim());
+        Logger.log("Existing headers (display): " + existingHeaders.join(", "));
 
-        const templateCell = sheet.getRange(1, 2);
         param.allZones.forEach(zone => {
           const zoneStr = zone.toString().trim();
           if (zoneStr && !existingHeaders.includes(zoneStr)) {
             const newColIdx = sheet.getLastColumn() + 1;
-            sheet.getRange(1, newColIdx).setValue(zoneStr);
-            templateCell.copyFormatToRange(sheet, newColIdx, newColIdx, 1, 1);
+            const lastRow = Math.max(sheet.getLastRow(), 1);
+            const newHeaderCell = sheet.getRange(1, newColIdx);
+
+            // Force text format BEFORE setValue so "040" keeps its leading zero
+            newHeaderCell.setNumberFormat('@');
+            newHeaderCell.setValue(zoneStr);
+
+            // Copy format from the WHOLE template column (B) — not just header —
+            // so the new column gets header background, body fill, borders, font, etc.
+            const templateColRange = sheet.getRange(1, 2, lastRow, 1);
+            templateColRange.copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
+
+            // copyFormatToRange may have overridden numberFormat; re-apply text on header
+            newHeaderCell.setNumberFormat('@');
+
             existingHeaders.push(zoneStr);
             Logger.log("ADDED new column at " + newColIdx + ": " + zoneStr);
           } else {
             Logger.log("Skipped (exists): " + zoneStr);
           }
         });
+
+        // Sync visual state: grey out body of any column whose header isn't in the
+        // active zones list (deleted / hidden in the app). Restore default fill on
+        // active columns so re-activated zones lose their grey overlay.
+        SpreadsheetApp.flush();
+        applyZoneVisualState(sheet, param.allZones);
         SpreadsheetApp.flush();
       } else {
         Logger.log("WARNING: allZones missing or not array");
@@ -78,7 +96,7 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => h.toString().trim());
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => h.toString().trim());
       Logger.log("Headers after add: " + headers.join(", "));
 
       for (const [key, val] of Object.entries(param.items)) {
@@ -165,6 +183,38 @@ function getWeekNumber(d) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
+// Columns that must never be greyed out regardless of allZones content.
+const PROTECTED_HEADERS = ['Datum', "AUTO's"];
+// Light grey fill for hidden/deleted zones (visible against header dark bg).
+const HIDDEN_BG = '#d9d9d9';
+
+// Greys out the body (row 2+) of any column whose header isn't in `activeZones`
+// and restores default fill for columns whose header IS in activeZones.
+// Header row is left untouched so column titles stay readable.
+function applyZoneVisualState(sheet, activeZones) {
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2 || lastCol < 1) return;
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]
+    .map(h => h.toString().trim());
+  const activeSet = {};
+  activeZones.forEach(z => { activeSet[z.toString().trim()] = true; });
+
+  for (let i = 0; i < headers.length; i++) {
+    const header = headers[i];
+    if (!header || PROTECTED_HEADERS.indexOf(header) !== -1) continue;
+    const bodyRange = sheet.getRange(2, i + 1, lastRow - 1, 1);
+    if (activeSet[header]) {
+      bodyRange.setBackground(null);
+      Logger.log("Restored col " + (i + 1) + " (" + header + ")");
+    } else {
+      bodyRange.setBackground(HIDDEN_BG);
+      Logger.log("Greyed col " + (i + 1) + " (" + header + ")");
+    }
+  }
+}
+
 function testAddColumns() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Aantal');
@@ -172,21 +222,42 @@ function testAddColumns() {
   const allZones = ["220", "230", "240", "250", "260", "520", "040", "050"];
 
   const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn())
-    .getValues()[0].map(h => h.toString().trim());
-
-  const templateCell = sheet.getRange(1, 2);
+    .getDisplayValues()[0].map(h => h.toString().trim());
 
   Logger.log("Existing headers: " + existingHeaders.join(", "));
 
   allZones.forEach(zone => {
     if (!existingHeaders.includes(zone)) {
       const newColIdx = sheet.getLastColumn() + 1;
-      sheet.getRange(1, newColIdx).setValue(zone);
-      templateCell.copyFormatToRange(sheet, newColIdx, newColIdx, 1, 1);
+      const lastRow = Math.max(sheet.getLastRow(), 1);
+      const newHeaderCell = sheet.getRange(1, newColIdx);
+      newHeaderCell.setNumberFormat('@');
+      newHeaderCell.setValue(zone);
+
+      const templateColRange = sheet.getRange(1, 2, lastRow, 1);
+      templateColRange.copyFormatToRange(sheet, newColIdx, newColIdx, 1, lastRow);
+
+      newHeaderCell.setNumberFormat('@');
       existingHeaders.push(zone);
       Logger.log("Added new column: " + zone);
     } else {
       Logger.log("Already exists: " + zone);
     }
   });
+
+  applyZoneVisualState(sheet, allZones);
+}
+
+// Run this ONCE to fix existing zone columns that lost leading zeros.
+// It re-formats all header cells in row 1 as text — your existing data
+// is preserved, but "40" will display as "40" (you may need to manually
+// rename it to "040" in the cell if the app expects "040").
+function fixHeadersTextFormat() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Aantal');
+  const lastCol = sheet.getLastColumn();
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  headerRange.setNumberFormat('@');
+  Logger.log("Set text format on all " + lastCol + " header cells.");
+  Logger.log("Headers: " + headerRange.getDisplayValues()[0].join(", "));
 }
