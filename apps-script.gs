@@ -193,8 +193,8 @@ function getWeekNumber(d) {
 // Columns that must never be greyed out regardless of allZones content.
 const PROTECTED_HEADERS = ['Datum', "AUTO's"];
 const HIDDEN_BG  = '#f4cccc';   // Hidden/deleted columns — light pink
-const WEEKEND_BG = '#d9d9d9';   // Sat-Sun rows on active columns
-const CF_RULE_TAG = 'WORK_STATS_WEEKEND_RULE';
+const WORKDAY_BG = '#e8f0fe';   // Mon-Fri rows on active columns — light blue
+const WEEKEND_BG = '#cccccc';   // Sat-Sun rows on active columns — medium grey
 
 // Runs automatically every time someone opens the spreadsheet. Reads the last
 // active zone list from ScriptProperties (saved by doPost) and re-applies the
@@ -217,30 +217,43 @@ function onOpen(e) {
   }
 }
 
-// Installs a single conditional-formatting rule on Aantal!A2:ZZ that fills
-// rows whose Datum column is Sat/Sun with WEEKEND_BG. Existing identical rule
-// is preserved; any other rules on the sheet are kept untouched. Idempotent.
+// Installs two conditional-formatting rules on Aantal!A2:ZZ:
+//   - Sat/Sun rows -> WEEKEND_BG (medium grey)
+//   - Mon-Fri rows -> WORKDAY_BG (light blue)
+// Both check that column A has a date so empty rows below the data stay clean.
+// Replaces any previously-installed Work Stats rules; other rules are kept.
 function ensureConditionalFormatting(sheet) {
   const range = sheet.getRange("A2:ZZ");
-  const existing = sheet.getConditionalFormatRules();
 
-  const formula = '=AND($A2<>"",WEEKDAY($A2,2)>5)';
-  const already = existing.some(r => {
+  const weekendFormula = '=AND($A2<>"",WEEKDAY($A2,2)>5)';
+  const workdayFormula = '=AND($A2<>"",WEEKDAY($A2,2)<6)';
+  const ourFormulas = [weekendFormula, workdayFormula];
+
+  // Drop any previous Work Stats rules so we can re-install fresh ones
+  // (idempotent: re-running just reinstalls, no duplicates accumulate).
+  const kept = sheet.getConditionalFormatRules().filter(r => {
     const cond = r.getBooleanCondition && r.getBooleanCondition();
-    if (!cond) return false;
+    if (!cond) return true;
     const vals = cond.getCriteriaValues && cond.getCriteriaValues();
-    return vals && vals[0] === formula;
+    if (!vals) return true;
+    return ourFormulas.indexOf(vals[0]) === -1;
   });
-  if (already) return;
 
-  const rule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(formula)
+  const weekendRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(weekendFormula)
     .setBackground(WEEKEND_BG)
     .setRanges([range])
     .build();
 
-  sheet.setConditionalFormatRules(existing.concat([rule]));
-  Logger.log('Installed weekend conditional-formatting rule.');
+  const workdayRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(workdayFormula)
+    .setBackground(WORKDAY_BG)
+    .setRanges([range])
+    .build();
+
+  // Weekend rule goes first so it wins over the workday rule on Sat/Sun rows.
+  sheet.setConditionalFormatRules([weekendRule, workdayRule].concat(kept));
+  Logger.log('Installed weekend + workday conditional-formatting rules.');
 }
 
 // Greys the body (rows 2+) of any column whose header isn't in `activeZones`,
