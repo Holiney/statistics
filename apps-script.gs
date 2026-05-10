@@ -225,9 +225,19 @@ function onOpen(e) {
 function ensureConditionalFormatting(sheet) {
   const range = sheet.getRange("A2:ZZ");
 
-  const weekendFormula = '=AND($A2<>"",WEEKDAY($A2,2)>5)';
-  const workdayFormula = '=AND($A2<>"",WEEKDAY($A2,2)<6)';
+  // Handles both real Date cells (ISNUMBER true) and text dates like
+  // "05.01.2026" (DATEVALUE parses dd.mm.yyyy in this locale). IFERROR
+  // wraps the comparison so non-date rows fall through cleanly.
+  const weekendFormula = '=AND($A2<>"",IFERROR(WEEKDAY(IF(ISNUMBER($A2),$A2,DATEVALUE($A2)),2)>5,FALSE))';
+  const workdayFormula = '=AND($A2<>"",IFERROR(WEEKDAY(IF(ISNUMBER($A2),$A2,DATEVALUE($A2)),2)<6,FALSE))';
   const ourFormulas = [weekendFormula, workdayFormula];
+
+  // Known prior versions of our formulas, so we drop them all when re-installing.
+  const legacyFormulas = [
+    '=AND($A2<>"",WEEKDAY($A2,2)>5)',
+    '=AND($A2<>"",WEEKDAY($A2,2)<6)',
+  ];
+  const isOurs = (f) => ourFormulas.indexOf(f) !== -1 || legacyFormulas.indexOf(f) !== -1;
 
   // Drop any previous Work Stats rules so we can re-install fresh ones
   // (idempotent: re-running just reinstalls, no duplicates accumulate).
@@ -236,7 +246,7 @@ function ensureConditionalFormatting(sheet) {
     if (!cond) return true;
     const vals = cond.getCriteriaValues && cond.getCriteriaValues();
     if (!vals) return true;
-    return ourFormulas.indexOf(vals[0]) === -1;
+    return !isOurs(vals[0]);
   });
 
   const weekendRule = SpreadsheetApp.newConditionalFormatRule()
