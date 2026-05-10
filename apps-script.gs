@@ -193,6 +193,8 @@ const PROTECTED_HEADERS = ['Datum', "AUTO's"];
 const HIDDEN_BG  = '#9e9e9e';   // Hidden/deleted columns — dark grey
 const WORKDAY_BG = '#b8d4f0';   // Mon-Fri rows on active columns — blue
 const WEEKEND_BG = '#b0bec8';   // Sat-Sun rows on active columns — visible grey-blue
+const HIDDEN_FG  = '#ffffff';   // Hidden columns: white text on dark grey bg
+const DEFAULT_FG = '#000000';   // Active columns: standard black text
 
 // Runs automatically every time someone opens the spreadsheet. Reads the last
 // active zone list from ScriptProperties (saved by doPost) and re-applies all
@@ -275,24 +277,33 @@ function applyZoneVisualState(sheet, activeZones) {
   const weekendRow = dateCells.map(r => isWeekendDate(r[0], tz));
 
   const colors = [];
+  const fonts = [];
   for (let r = 0; r < dateCells.length; r++) {
     const row = [];
+    const fontRow = [];
     const w = weekendRow[r];
     for (let c = 0; c < headers.length; c++) {
       if (isHiddenCol[c]) {
         row.push(HIDDEN_BG);
+        fontRow.push(HIDDEN_FG);
       } else if (w === true) {
         row.push(WEEKEND_BG);
+        fontRow.push(DEFAULT_FG);
       } else if (w === false) {
         row.push(WORKDAY_BG);
+        fontRow.push(DEFAULT_FG);
       } else {
         row.push(null);
+        fontRow.push(DEFAULT_FG);
       }
     }
     colors.push(row);
+    fonts.push(fontRow);
   }
 
-  sheet.getRange(2, 1, lastRow - 1, lastCol).setBackgrounds(colors);
+  const bodyRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+  bodyRange.setBackgrounds(colors);
+  bodyRange.setFontColors(fonts);
   Logger.log("Repainted body: " + (lastRow - 1) + " rows x " + lastCol + " cols");
 }
 
