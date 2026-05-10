@@ -19,6 +19,35 @@ function doPost(e) {
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+    // --- DELETE PERSONNEL ZONE COLUMN (Aantal sheet) ---
+    // Called from the app when the user permanently deletes a personnel zone.
+    // Removes the entire column matching `param.zone` from the Aantal sheet.
+    if (param.type === 'deletePersonnelColumn') {
+      const sheet = ss.getSheetByName('Aantal');
+      if (!sheet) throw new Error("Аркуш 'Aantal' не знайдено!");
+      const target = param.zone.toString().trim();
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn())
+        .getDisplayValues()[0].map(h => h.toString().trim());
+      const idx = headers.indexOf(target);
+      if (idx === -1) {
+        Logger.log("deletePersonnelColumn: header not found: " + target);
+      } else if (PROTECTED_HEADERS.indexOf(target) !== -1) {
+        Logger.log("deletePersonnelColumn: refused to delete protected header: " + target);
+      } else {
+        sheet.deleteColumn(idx + 1);
+        Logger.log("deletePersonnelColumn: removed column " + (idx + 1) + " (" + target + ")");
+        // Also drop it from stored activeZones if it was there.
+        const stored = PropertiesService.getScriptProperties().getProperty('activeZones');
+        if (stored) {
+          try {
+            const zones = JSON.parse(stored).filter(z => z.toString().trim() !== target);
+            PropertiesService.getScriptProperties().setProperty('activeZones', JSON.stringify(zones));
+          } catch (err) {}
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // --- PERSONNEL (Aantal sheet) ---
     if (param.type === 'personnel') {
       const sheet = ss.getSheetByName('Aantal');
@@ -215,10 +244,10 @@ function getWeekNumber(d) {
 
 // Columns that must never be greyed out regardless of allZones content.
 const PROTECTED_HEADERS = ['Datum', "AUTO's"];
-const HIDDEN_BG  = '#9e9e9e';   // Hidden/deleted columns — dark grey
+const HIDDEN_BG  = '#999999';   // Hidden/deleted columns — dark grey
 const WORKDAY_BG = '#b8d4f0';   // Mon-Fri rows on active columns — blue
-const WEEKEND_BG = '#b0bec8';   // Sat-Sun rows on active columns — visible grey-blue
-const HIDDEN_FG  = '#ffffff';   // Hidden columns: white text on dark grey bg
+const WEEKEND_BG = '#999999';   // Sat-Sun rows on active columns — dark grey
+const HIDDEN_FG  = '#666666';   // Hidden columns: dimmed text
 const DEFAULT_FG = '#000000';   // Active columns: standard black text
 
 // Runs automatically every time someone opens the spreadsheet. Reads the last
