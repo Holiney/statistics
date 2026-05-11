@@ -177,9 +177,16 @@ function doPost(e) {
     const items = param.items;
     const sheet = ss.getSheets()[0];
     const date = new Date(param.date);
-    let weekNum = getWeekNumber(date);
 
-    if (weekNum === 1) weekNum = 2;
+    // The user's sheet labels weeks one number behind ISO 8601:
+    // ISO Week 20 (May 11-17) -> column "Week 19" in this workbook.
+    // We use the ISO week number from the app payload (already pre-computed
+    // in the user's local timezone) and shift by -1 to land on the correct
+    // column. Falling back to getWeekNumber(date) if the payload is missing.
+    const isoWeek = (typeof param.week === 'number' ? param.week : getWeekNumber(date));
+    let weekNum = isoWeek - 1;
+    if (weekNum < 1) weekNum = 1; // year-start fallback
+    Logger.log("OFFICE: ISO week=" + isoWeek + " -> sheet weekNum=" + weekNum);
 
     const weekLabel = "Week " + weekNum;
     const lastCol = sheet.getLastColumn();
