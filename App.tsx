@@ -15,6 +15,7 @@ import { getISOWeek } from './utils';
 import { loadAllHistory, saveHistoryEntry, clearAllHistory } from './services/historyStore';
 import { seedZonesIfEmpty, saveZone, deleteZone } from './services/zonesStore';
 import { seedCategoriesIfEmpty, saveCategory, deleteCategory } from './services/categoriesStore';
+import { loadGlobalSettings, saveGlobalSettings, GLOBAL_KEYS } from './services/settingsStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
@@ -263,7 +264,10 @@ const App: React.FC = () => {
     initHistory();
   }, []);
 
-  // Persist Settings
+  // Persist Settings: local UI prefs in localStorage, admin-controlled fields
+  // (webhook URLs, sync provider, admin password) in Firestore so they sync
+  // across devices.
+  const settingsLoadedRef = React.useRef(false);
   useEffect(() => {
     localStorage.setItem('ws_settings', JSON.stringify(settings));
     if (settings.theme === 'dark') {
@@ -271,7 +275,30 @@ const App: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Only push to Firestore after the initial load from Firestore has completed,
+    // otherwise the first effect run would overwrite remote values with stale locals.
+    if (settingsLoadedRef.current) {
+      saveGlobalSettings(settings).catch(err => console.error('Failed to save global settings', err));
+    }
   }, [settings]);
+
+  // On mount: pull admin-controlled settings from Firestore and merge into local state.
+  useEffect(() => {
+    loadGlobalSettings()
+      .then(remote => {
+        if (remote) {
+          setSettings(prev => {
+            const merged = { ...prev };
+            for (const k of GLOBAL_KEYS) {
+              if (remote[k] !== undefined) (merged as any)[k] = remote[k];
+            }
+            return merged;
+          });
+        }
+      })
+      .catch(err => console.error('Failed to load global settings', err))
+      .finally(() => { settingsLoadedRef.current = true; });
+  }, []);
 
   // Persist Draft Data
   useEffect(() => {
