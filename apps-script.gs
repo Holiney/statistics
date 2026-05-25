@@ -178,31 +178,33 @@ function doPost(e) {
     const sheet = ss.getSheets()[0];
     const date = new Date(param.date);
 
-    // The user's sheet labels weeks one number behind ISO 8601:
-    // ISO Week 20 (May 11-17) -> column "Week 19" in this workbook.
-    // We use the ISO week number from the app payload (already pre-computed
-    // in the user's local timezone) and shift by -1 to land on the correct
-    // column. Falling back to getWeekNumber(date) if the payload is missing.
     const isoWeek = (typeof param.week === 'number' ? param.week : getWeekNumber(date));
-    let weekNum = isoWeek - 1;
-    if (weekNum < 1) weekNum = 1; // year-start fallback
-    Logger.log("OFFICE: ISO week=" + isoWeek + " -> sheet weekNum=" + weekNum);
-
-    const weekLabel = "Week " + weekNum;
     const lastCol = sheet.getLastColumn();
     const headers = sheet.getRange(1, 1, 2, lastCol).getValues();
     const headerRow1 = headers[0];
     const headerRow2 = headers[1];
 
-    let weekStartIndex = -1;
-    for (let i = 0; i < headerRow1.length; i++) {
-      if (headerRow1[i] && headerRow1[i].toString().includes(weekLabel)) {
-        weekStartIndex = i; break;
-      }
+    Logger.log("OFFICE: isoWeek=" + isoWeek + " room=" + room);
+    Logger.log("OFFICE headerRow1: " + JSON.stringify(headerRow1));
+
+    // The user's sheet labels weeks one number behind ISO 8601
+    // (ISO Week 20 -> column "Week 19"). Prefer that, but fall back to the
+    // exact ISO label if the shifted column doesn't exist, so data always
+    // lands somewhere instead of silently failing.
+    let weekStartIndex = findWeekColumn(headerRow1, isoWeek - 1);
+    let usedWeek = isoWeek - 1;
+    if (weekStartIndex === -1) {
+      weekStartIndex = findWeekColumn(headerRow1, isoWeek);
+      usedWeek = isoWeek;
+    }
+    Logger.log("OFFICE: matched Week " + usedWeek + " at index " + weekStartIndex);
+
+    if (weekStartIndex === -1) {
+      throw new Error("Тиждень Week " + (isoWeek - 1) + " / Week " + isoWeek +
+        " не знайдено. Заголовки: " + headerRow1.join(" | "));
     }
 
-    if (weekStartIndex === -1) throw new Error("Тиждень " + weekLabel + " не знайдено.");
-
+    const weekLabel = "Week " + usedWeek;
     let targetColIndex = -1;
     for (let i = weekStartIndex; i < weekStartIndex + 30 && i < lastCol; i++) {
       if (headerRow2[i].toString().trim() === room.toString().trim()) {
@@ -247,6 +249,19 @@ function getWeekNumber(d) {
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// Finds the column index (0-based) in headerRow1 whose label refers to the
+// given week number. Uses a non-digit boundary so "Week 1" does NOT match
+// "Week 19", and tolerates "Week19" / "Week 019" / "Week 19 (11/05)" forms.
+function findWeekColumn(headerRow1, weekNum) {
+  if (weekNum < 1) return -1;
+  var re = new RegExp("Week\\s*0*" + weekNum + "(?!\\d)");
+  for (var i = 0; i < headerRow1.length; i++) {
+    var h = headerRow1[i] ? headerRow1[i].toString() : "";
+    if (re.test(h)) return i;
+  }
+  return -1;
 }
 
 // Columns that must never be greyed out regardless of allZones content.
