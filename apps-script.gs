@@ -499,6 +499,27 @@ function fixHeadersTextFormat() {
   Logger.log("Headers: " + headerRange.getDisplayValues()[0].join(", "));
 }
 
+// Simulates exactly what the app sends. Run manually from the editor.
+// If this writes values → the logic is correct and the HTTP payload is the problem.
+// If this does NOT write → there is a bug in doPost itself.
+function testDoPostOffice() {
+  const fakePayload = {
+    date: "2026-05-25T11:30:00",
+    year: 2026,
+    week: 22,       // ISO week number (what getISOWeek() returns today)
+    room: "170",    // non-black room in the sheet
+    items: { "EK 1": 99, "EK 2": 88, "EK 5": 77 }
+  };
+
+  Logger.log("=== testDoPostOffice: calling doPost with fake payload ===");
+  Logger.log("Payload: " + JSON.stringify(fakePayload));
+
+  const fakeE = { postData: { contents: JSON.stringify(fakePayload) } };
+  const result = doPost(fakeE);
+  Logger.log("doPost result: " + result.getContent());
+  Logger.log("=== done — check the sheet for 99/88/77 in room 170 of Week 21 ===");
+}
+
 // Run this manually to diagnose the Office (Канцелярія) write issue.
 // Select this function in the dropdown and click "Запустити".
 // Results appear immediately in the bottom "Журнал виконання" panel.
