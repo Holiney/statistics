@@ -172,10 +172,23 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- OFFICE (first sheet) ---
+    // --- OFFICE ---
     const room = param.room;
     const items = param.items;
-    const sheet = ss.getSheets()[0];
+
+    // Find the Economaatkast sheet by name (case-insensitive prefix match),
+    // falling back to the first sheet if not found.
+    let sheet = null;
+    const allSheets = ss.getSheets();
+    for (var s = 0; s < allSheets.length; s++) {
+      if (allSheets[s].getName().toLowerCase().indexOf('economaatkast') !== -1) {
+        sheet = allSheets[s];
+        break;
+      }
+    }
+    if (!sheet) sheet = allSheets[0];
+    Logger.log("OFFICE: using sheet '" + sheet.getName() + "' (index " + allSheets.indexOf(sheet) + ")");
+
     const date = new Date(param.date);
 
     const isoWeek = (typeof param.week === 'number' ? param.week : getWeekNumber(date));
@@ -186,11 +199,11 @@ function doPost(e) {
 
     Logger.log("OFFICE: isoWeek=" + isoWeek + " room=" + room);
     Logger.log("OFFICE headerRow1: " + JSON.stringify(headerRow1));
+    Logger.log("OFFICE headerRow2: " + JSON.stringify(headerRow2));
 
     // The user's sheet labels weeks one number behind ISO 8601
-    // (ISO Week 20 -> column "Week 19"). Prefer that, but fall back to the
-    // exact ISO label if the shifted column doesn't exist, so data always
-    // lands somewhere instead of silently failing.
+    // (ISO Week 22 -> column "Week 21"). Prefer that, but fall back to the
+    // exact ISO label if the shifted column doesn't exist.
     let weekStartIndex = findWeekColumn(headerRow1, isoWeek - 1);
     let usedWeek = isoWeek - 1;
     if (weekStartIndex === -1) {
@@ -204,13 +217,15 @@ function doPost(e) {
         " не знайдено. Заголовки: " + headerRow1.join(" | "));
     }
 
-    const weekLabel = "Week " + usedWeek;
     let targetColIndex = -1;
     for (let i = weekStartIndex; i < weekStartIndex + 30 && i < lastCol; i++) {
-      if (headerRow2[i].toString().trim() === room.toString().trim()) {
+      const cellVal = headerRow2[i] ? headerRow2[i].toString().trim() : '';
+      Logger.log("OFFICE: checking row2[" + i + "] = '" + cellVal + "' vs room '" + room + "'");
+      if (cellVal === room.toString().trim()) {
         targetColIndex = i + 1; break;
       }
     }
+    Logger.log("OFFICE: targetColIndex=" + targetColIndex);
 
     if (targetColIndex === -1) {
       let insertIdx = weekStartIndex;
@@ -219,11 +234,16 @@ function doPost(e) {
       }
       targetColIndex = insertIdx + 1;
       sheet.getRange(2, targetColIndex).setValue(room.toString().trim());
+      Logger.log("OFFICE: room not found, created new column at " + targetColIndex);
     }
 
     const itemNames = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().flat();
+    Logger.log("OFFICE: itemNames (col A) = " + JSON.stringify(itemNames.slice(0, 25)));
+    Logger.log("OFFICE: items to write = " + JSON.stringify(items));
+    let writtenCount = 0;
     for (const [item, count] of Object.entries(items)) {
-      if (count === 0 || count === "–") continue;
+      // Skip empty/zero values — note: the app stores '-' (hyphen) for empty
+      if (count === 0 || count === '-' || count === '–' || count === '') continue;
       const cleanKey = item.toString().replace(/\s/g, "").toLowerCase();
       let rowIdx = -1;
       for (let r = 0; r < itemNames.length; r++) {
@@ -231,8 +251,15 @@ function doPost(e) {
           rowIdx = r + 1; break;
         }
       }
-      if (rowIdx !== -1) sheet.getRange(rowIdx, targetColIndex).setValue(count);
+      if (rowIdx !== -1) {
+        sheet.getRange(rowIdx, targetColIndex).setValue(count);
+        Logger.log("OFFICE: wrote item '" + item + "' = " + count + " at row " + rowIdx + ", col " + targetColIndex);
+        writtenCount++;
+      } else {
+        Logger.log("OFFICE: item '" + item + "' (cleanKey='" + cleanKey + "') NOT FOUND in column A");
+      }
     }
+    Logger.log("OFFICE: done, wrote " + writtenCount + " cells");
 
     return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
 
