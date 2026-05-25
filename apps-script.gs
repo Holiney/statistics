@@ -505,51 +505,45 @@ function fixHeadersTextFormat() {
 function debugOffice() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // 1. List every sheet
+  // 1. Find Economaatkast sheet
   const allSheets = ss.getSheets();
-  Logger.log("=== All sheets (" + allSheets.length + ") ===");
-  allSheets.forEach(function(s, i) {
-    Logger.log("  [" + i + "] '" + s.getName() + "'");
-  });
-
-  // 2. Find Economaatkast sheet
   let sheet = null;
   for (var i = 0; i < allSheets.length; i++) {
     if (allSheets[i].getName().toLowerCase().indexOf('economaatkast') !== -1) {
       sheet = allSheets[i]; break;
     }
   }
-  if (!sheet) {
-    Logger.log("WARNING: No sheet with 'economaatkast' in name! Falling back to sheet[0]: '" + allSheets[0].getName() + "'");
-    sheet = allSheets[0];
-  } else {
-    Logger.log("Found Economaatkast sheet: '" + sheet.getName() + "'");
-  }
+  if (!sheet) sheet = allSheets[0];
+  Logger.log("Sheet: '" + sheet.getName() + "'  size: " + sheet.getLastRow() + "r x " + sheet.getLastColumn() + "c");
 
-  // 3. Read first 2 rows (week headers + room numbers)
   const lastCol = sheet.getLastColumn();
-  const lastRow = sheet.getLastRow();
-  Logger.log("Sheet size: " + lastRow + " rows x " + lastCol + " cols");
 
-  const cap = Math.min(lastCol, 30);
-  const row1 = sheet.getRange(1, 1, 1, cap).getValues()[0];
-  const row2 = sheet.getRange(2, 1, 1, cap).getValues()[0];
-  Logger.log("Row 1 (week labels): " + JSON.stringify(row1));
-  Logger.log("Row 2 (rooms):       " + JSON.stringify(row2));
+  // 2. Read ALL of row 1 to find Week 21 / 22
+  const row1full = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var week21col = -1, week22col = -1;
+  for (var c = 0; c < row1full.length; c++) {
+    var h = row1full[c] ? row1full[c].toString() : "";
+    if (/Week\s*0*21(?!\d)/.test(h)) week21col = c;
+    if (/Week\s*0*22(?!\d)/.test(h)) week22col = c;
+  }
+  Logger.log("Week 21 index (0-based): " + week21col + (week21col >= 0 ? "  value: '" + row1full[week21col] + "'" : " NOT FOUND IN SHEET"));
+  Logger.log("Week 22 index (0-based): " + week22col + (week22col >= 0 ? "  value: '" + row1full[week22col] + "'" : " NOT FOUND IN SHEET"));
 
-  // 4. Search for current week (try 21 and 22)
-  [21, 22].forEach(function(wk) {
-    var re = new RegExp("Week\\s*0*" + wk + "(?!\\d)");
-    var found = -1;
-    for (var c = 0; c < row1.length; c++) {
-      if (re.test(row1[c] ? row1[c].toString() : "")) { found = c; break; }
-    }
-    Logger.log("Week " + wk + " found at col index: " + found + (found >= 0 ? " (value: '" + row1[found] + "')" : " NOT FOUND"));
-  });
+  // 3. If found, show rooms row and attempt test write
+  var targetWeekCol = week21col >= 0 ? week21col : week22col;
+  if (targetWeekCol >= 0) {
+    const row2slice = sheet.getRange(2, targetWeekCol + 1, 1, 14).getValues()[0];
+    Logger.log("Row 2 rooms under that week: " + JSON.stringify(row2slice));
 
-  // 5. Column A — item names
-  const colA = sheet.getRange(1, 1, Math.min(lastRow, 30), 1).getValues().flat();
-  Logger.log("Col A (items): " + JSON.stringify(colA));
+    // Try to write TEST to EK 1 row, first room column
+    var testCol = targetWeekCol + 2; // +1 for 1-based, +1 to skip week-label col → first room
+    Logger.log("Writing TEST to row 3, col " + testCol + " ...");
+    sheet.getRange(3, testCol).setValue("TEST");
+    Logger.log("Write OK — check the sheet now!");
+  } else {
+    Logger.log("PROBLEM: Neither Week 21 nor Week 22 found in 600 columns!");
+    Logger.log("First 5 non-empty row-1 values: " + row1full.filter(function(v){ return v !== ""; }).slice(0, 5).join(" | "));
+  }
 }
 
 // Run this to diagnose painting issues. Shows stored zones, headers, and
