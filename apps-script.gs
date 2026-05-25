@@ -499,6 +499,59 @@ function fixHeadersTextFormat() {
   Logger.log("Headers: " + headerRange.getDisplayValues()[0].join(", "));
 }
 
+// Run this manually to diagnose the Office (Канцелярія) write issue.
+// Select this function in the dropdown and click "Запустити".
+// Results appear immediately in the bottom "Журнал виконання" panel.
+function debugOffice() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. List every sheet
+  const allSheets = ss.getSheets();
+  Logger.log("=== All sheets (" + allSheets.length + ") ===");
+  allSheets.forEach(function(s, i) {
+    Logger.log("  [" + i + "] '" + s.getName() + "'");
+  });
+
+  // 2. Find Economaatkast sheet
+  let sheet = null;
+  for (var i = 0; i < allSheets.length; i++) {
+    if (allSheets[i].getName().toLowerCase().indexOf('economaatkast') !== -1) {
+      sheet = allSheets[i]; break;
+    }
+  }
+  if (!sheet) {
+    Logger.log("WARNING: No sheet with 'economaatkast' in name! Falling back to sheet[0]: '" + allSheets[0].getName() + "'");
+    sheet = allSheets[0];
+  } else {
+    Logger.log("Found Economaatkast sheet: '" + sheet.getName() + "'");
+  }
+
+  // 3. Read first 2 rows (week headers + room numbers)
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  Logger.log("Sheet size: " + lastRow + " rows x " + lastCol + " cols");
+
+  const cap = Math.min(lastCol, 30);
+  const row1 = sheet.getRange(1, 1, 1, cap).getValues()[0];
+  const row2 = sheet.getRange(2, 1, 1, cap).getValues()[0];
+  Logger.log("Row 1 (week labels): " + JSON.stringify(row1));
+  Logger.log("Row 2 (rooms):       " + JSON.stringify(row2));
+
+  // 4. Search for current week (try 21 and 22)
+  [21, 22].forEach(function(wk) {
+    var re = new RegExp("Week\\s*0*" + wk + "(?!\\d)");
+    var found = -1;
+    for (var c = 0; c < row1.length; c++) {
+      if (re.test(row1[c] ? row1[c].toString() : "")) { found = c; break; }
+    }
+    Logger.log("Week " + wk + " found at col index: " + found + (found >= 0 ? " (value: '" + row1[found] + "')" : " NOT FOUND"));
+  });
+
+  // 5. Column A — item names
+  const colA = sheet.getRange(1, 1, Math.min(lastRow, 30), 1).getValues().flat();
+  Logger.log("Col A (items): " + JSON.stringify(colA));
+}
+
 // Run this to diagnose painting issues. Shows stored zones, headers, and
 // how the first 5 date cells are interpreted (type, value, weekend flag).
 function debugZoneState() {
