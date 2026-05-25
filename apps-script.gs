@@ -502,6 +502,30 @@ function fixHeadersTextFormat() {
 // Simulates exactly what the app sends. Run manually from the editor.
 // If this writes values → the logic is correct and the HTTP payload is the problem.
 // If this does NOT write → there is a bug in doPost itself.
+// Sends a real HTTP POST to the deployed URL — exactly like the app does.
+// If this writes data → deployed code is correct, problem is in the app's payload.
+// If this doesn't write → deployed code is old/broken.
+function testHttpPost() {
+  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec';
+  const payload = {
+    date: "2026-05-25T12:00:00",
+    year: 2026,
+    week: 22,
+    room: "220",
+    items: { "EK 1": 55, "EK 3": 44 }
+  };
+  Logger.log("Sending HTTP POST to deployed URL...");
+  const response = UrlFetchApp.fetch(WEBHOOK_URL, {
+    method: 'post',
+    contentType: 'text/plain',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  Logger.log("HTTP status: " + response.getResponseCode());
+  Logger.log("Response: " + response.getContentText());
+  Logger.log("Done — check sheet for 55/44 in room 220, Week 21");
+}
+
 function testDoPostOffice() {
   const fakePayload = {
     date: "2026-05-25T11:30:00",
