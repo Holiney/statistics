@@ -64,7 +64,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
   };
 
   const handleSyncDay = async (dayKey: string, entries: HistoryEntry[]) => {
-    const syncable = entries.filter(e => e.type !== 'bikes');
+    const syncable = entries.filter(e => e.type === 'office');
     if (!syncable.length) return;
 
     const isMicrosoft = settings.syncProvider === 'microsoft';
@@ -238,7 +238,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                 <div className="space-y-8">
                   {sortedDates.map((date) => {
                     const allForDay = Object.values(groupedByYear[year][date]).flat() as HistoryEntry[];
-                    const hasSyncable = allForDay.some(e => e.type !== 'bikes');
+                    const hasSyncable = allForDay.some(e => e.type === 'office');
                     const dayKey = `${year}-${date}`;
                     return (
                     <div key={date} className="space-y-4">
