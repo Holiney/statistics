@@ -213,8 +213,20 @@ function doPost(e) {
     Logger.log("OFFICE: matched Week " + usedWeek + " at index " + weekStartIndex);
 
     if (weekStartIndex === -1) {
-      throw new Error("Тиждень Week " + (isoWeek - 1) + " / Week " + isoWeek +
-        " не знайдено. Заголовки: " + headerRow1.join(" | "));
+      // Week header not found in the sheet — auto-create it so data is never lost.
+      usedWeek = (isoWeek - 1 >= 1) ? isoWeek - 1 : isoWeek;
+
+      // Find the last non-empty column in row 1, place new header right after.
+      var newWeekCol = 0;
+      for (var ci = lastCol - 1; ci >= 0; ci--) {
+        if (headerRow1[ci] && headerRow1[ci].toString().trim() !== '') {
+          newWeekCol = ci + 1; // 0-based index of the new column
+          break;
+        }
+      }
+      sheet.getRange(1, newWeekCol + 1).setValue("Week " + usedWeek);
+      weekStartIndex = newWeekCol;
+      Logger.log("OFFICE: Week " + usedWeek + " not found — auto-created at col " + (newWeekCol + 1));
     }
 
     let targetColIndex = -1;
@@ -508,13 +520,13 @@ function fixHeadersTextFormat() {
 function testHttpPost() {
   const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec';
   const payload = {
-    date: "2026-05-25T12:00:00",
+    date: "2026-07-22T12:00:00",
     year: 2026,
-    week: 22,
+    week: 29,
     room: "220",
     items: { "EK 1": 55, "EK 3": 44 }
   };
-  Logger.log("Sending HTTP POST to deployed URL...");
+  Logger.log("Sending HTTP POST to deployed URL (week 29, room 220)...");
   const response = UrlFetchApp.fetch(WEBHOOK_URL, {
     method: 'post',
     contentType: 'text/plain',
@@ -523,25 +535,25 @@ function testHttpPost() {
   });
   Logger.log("HTTP status: " + response.getResponseCode());
   Logger.log("Response: " + response.getContentText());
-  Logger.log("Done — check sheet for 55/44 in room 220, Week 21");
+  Logger.log("Done — check sheet for 55/44 in room 220, current week");
 }
 
 function testDoPostOffice() {
   const fakePayload = {
-    date: "2026-05-25T11:30:00",
+    date: "2026-07-22T12:00:00",
     year: 2026,
-    week: 22,       // ISO week number (what getISOWeek() returns today)
-    room: "170",    // non-black room in the sheet
+    week: 29,       // Current ISO week (July 22, 2026)
+    room: "220",    // Non-black room — one the user says doesn't work
     items: { "EK 1": 99, "EK 2": 88, "EK 5": 77 }
   };
 
-  Logger.log("=== testDoPostOffice: calling doPost with fake payload ===");
+  Logger.log("=== testDoPostOffice: week 29, room 220 ===");
   Logger.log("Payload: " + JSON.stringify(fakePayload));
 
   const fakeE = { postData: { contents: JSON.stringify(fakePayload) } };
   const result = doPost(fakeE);
   Logger.log("doPost result: " + result.getContent());
-  Logger.log("=== done — check the sheet for 99/88/77 in room 170 of Week 21 ===");
+  Logger.log("=== done — check the sheet for 99/88/77 in room 220, Week 28/29 ===");
 }
 
 // Run this manually to diagnose the Office (Канцелярія) write issue.
@@ -563,19 +575,24 @@ function debugOffice() {
 
   const lastCol = sheet.getLastColumn();
 
-  // 2. Read ALL of row 1 to find Week 21 / 22
+  // 2. Read ALL of row 1 — search for weeks 21/22 (historical) AND current weeks 27-30
   const row1full = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var week21col = -1, week22col = -1;
-  for (var c = 0; c < row1full.length; c++) {
-    var h = row1full[c] ? row1full[c].toString() : "";
-    if (/Week\s*0*21(?!\d)/.test(h)) week21col = c;
-    if (/Week\s*0*22(?!\d)/.test(h)) week22col = c;
-  }
-  Logger.log("Week 21 index (0-based): " + week21col + (week21col >= 0 ? "  value: '" + row1full[week21col] + "'" : " NOT FOUND IN SHEET"));
-  Logger.log("Week 22 index (0-based): " + week22col + (week22col >= 0 ? "  value: '" + row1full[week22col] + "'" : " NOT FOUND IN SHEET"));
+  var weekCols = {};
+  [21, 22, 27, 28, 29, 30].forEach(function(wn) {
+    var re = new RegExp("Week\\s*0*" + wn + "(?!\\d)");
+    for (var c = 0; c < row1full.length; c++) {
+      var h = row1full[c] ? row1full[c].toString() : "";
+      if (re.test(h)) { weekCols[wn] = c; break; }
+    }
+    Logger.log("Week " + wn + " col (0-based): " + (weekCols[wn] !== undefined ? weekCols[wn] + "  value: '" + row1full[weekCols[wn]] + "'" : "NOT FOUND"));
+  });
 
   // 3. If found, show rooms row and attempt test write
-  var targetWeekCol = week21col >= 0 ? week21col : week22col;
+  // Prefer current week 28/29; fall back to 21/22 for historical reference
+  var targetWeekCol = weekCols[28] !== undefined ? weekCols[28] :
+                      weekCols[29] !== undefined ? weekCols[29] :
+                      weekCols[21] !== undefined ? weekCols[21] :
+                      weekCols[22] !== undefined ? weekCols[22] : -1;
   if (targetWeekCol >= 0) {
     const row2slice = sheet.getRange(2, targetWeekCol + 1, 1, 14).getValues()[0];
     Logger.log("Row 2 rooms under that week: " + JSON.stringify(row2slice));
