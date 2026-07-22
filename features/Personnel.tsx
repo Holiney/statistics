@@ -140,7 +140,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
 
       onSaveHistory({
         id: generateId(),
-        date: new Date().toISOString(),
+        date: localDate,
+        week: payload.week,
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars} (Cloud)`,
         details: counts,
@@ -151,7 +152,8 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
       console.error("Sync failed:", error);
       onSaveHistory({
         id: generateId(),
-        date: new Date().toISOString(),
+        date: localDate,
+        week: payload.week,
         type: 'personnel',
         summary: `${t.personnel} & ${t.cars}`,
         details: counts,
@@ -178,9 +180,15 @@ export const Personnel: React.FC<Props> = ({ settings, onShowToast, onSaveHistor
     if (success) {
       onShowToast(t.copied, 'success');
       if (Object.values(counts).some((v: number) => v > 0)) {
+        const now = new Date();
+        const d = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(now.getDate()).padStart(2, '0') + 'T' +
+                  String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' +
+                  String(now.getSeconds()).padStart(2, '0');
         onSaveHistory({
           id: generateId(),
-          date: new Date().toISOString(),
+          date: d,
+          week: getISOWeek(now),
           type: 'personnel',
           summary: `${t.personnel} & ${t.cars}`,
           details: counts

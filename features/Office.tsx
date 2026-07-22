@@ -138,10 +138,11 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
         onShowToast(t.success, 'success');
       }
 
-      // Save to History — snapshot zoneName so old entries are never affected by zone renames
+      // Save to History — snapshot week+zoneName so re-sync always hits the exact same column
       onSaveHistory({
         id: generateId(),
         date: payload.date,
+        week: payload.week,
         type: 'office',
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
@@ -158,6 +159,7 @@ export const Office: React.FC<Props> = ({ settings, onShowToast, onSaveHistory, 
       onSaveHistory({
         id: generateId(),
         date: payload.date,
+        week: payload.week,
         type: 'office',
         summary: `${t.office} - Room ${selectedRoom}`,
         details: currentRoomItems,
