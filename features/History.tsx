@@ -335,8 +335,26 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                </div>
             </div>
 
+            {/* Sync button — always available so any device can re-send with the correct historical date */}
+            {selectedEntry.type !== 'bikes' && (
+              <Button
+                fullWidth
+                variant="primary"
+                onClick={() => handleRetrySync(selectedEntry)}
+                disabled={retryingId === selectedEntry.id}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  {retryingId === selectedEntry.id
+                    ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    : <RefreshCw size={16} />
+                  }
+                  {t.submit}
+                </div>
+              </Button>
+            )}
+
             <Button fullWidth variant="secondary" onClick={() => setSelectedEntry(null)}>
-               Close
+              {t.later}
             </Button>
           </div>
         )}
