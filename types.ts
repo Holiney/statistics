@@ -54,6 +54,7 @@ export interface Category {
 export interface HistoryEntry {
   id: string;
   date: string;
+  week?: number;     // ISO week number at time of entry — used for re-sync to hit the same column
   type: 'personnel' | 'bikes' | 'office';
   summary: string;
   details: any;

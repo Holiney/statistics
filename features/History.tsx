@@ -33,10 +33,10 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
 
     setRetryingId(entry.id);
     try {
-      const entryDate = new Date(entry.date);
+      const week = entry.week ?? getISOWeek(new Date(entry.date));
       const payload = entry.type === 'office'
-        ? { date: entry.date, week: getISOWeek(entryDate), room: entry.room, items: entry.details }
-        : { date: entry.date, week: getISOWeek(entryDate), type: entry.type, items: entry.details };
+        ? { date: entry.date, week, room: entry.room, items: entry.details }
+        : { date: entry.date, week, type: entry.type, items: entry.details };
 
       if (isMicrosoft) {
         const res = await fetch(url, {
@@ -78,10 +78,8 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
     let ok = 0;
     for (const entry of syncable) {
       try {
-        const entryDate = new Date(entry.date);
-        const payload = entry.type === 'office'
-          ? { date: entry.date, week: getISOWeek(entryDate), room: entry.room, items: entry.details }
-          : { date: entry.date, week: getISOWeek(entryDate), type: entry.type, items: entry.details };
+        const week = entry.week ?? getISOWeek(new Date(entry.date));
+        const payload = { date: entry.date, week, room: entry.room, items: entry.details };
 
         if (isMicrosoft) {
           const res = await fetch(url, {

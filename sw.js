@@ -1,4 +1,4 @@
-const CACHE_NAME = 'work-stats-v1.53';
+const CACHE_NAME = 'work-stats-v1.54';
 
 // Install Event: Cache core assets opportunistically
 self.addEventListener('install', (event) => {
