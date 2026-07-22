@@ -21,6 +21,7 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [syncingDayKey, setSyncingDayKey] = useState<string | null>(null);
 
   const handleRetrySync = async (entry: HistoryEntry) => {
     const isMicrosoft = settings.syncProvider === 'microsoft';
@@ -60,6 +61,50 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
     } finally {
       setRetryingId(null);
     }
+  };
+
+  const handleSyncDay = async (dayKey: string, entries: HistoryEntry[]) => {
+    const syncable = entries.filter(e => e.type !== 'bikes');
+    if (!syncable.length) return;
+
+    const isMicrosoft = settings.syncProvider === 'microsoft';
+    const url = isMicrosoft ? settings.microsoftWebhookUrl : settings.webhookUrl;
+    if (!url) {
+      onShowToast('No webhook URL configured', 'error');
+      return;
+    }
+
+    setSyncingDayKey(dayKey);
+    let ok = 0;
+    for (const entry of syncable) {
+      try {
+        const entryDate = new Date(entry.date);
+        const payload = entry.type === 'office'
+          ? { date: entry.date, week: getISOWeek(entryDate), room: entry.room, items: entry.details }
+          : { date: entry.date, week: getISOWeek(entryDate), type: entry.type, items: entry.details };
+
+        if (isMicrosoft) {
+          const res = await fetch(url, {
+            method: 'POST', mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } else {
+          await fetch(url, {
+            method: 'POST', mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload),
+          });
+        }
+        onUpdateEntry(entry.id, { syncedToExcel: true, syncedAt: new Date().toISOString() });
+        ok++;
+      } catch (err) {
+        console.error('Day sync failed for entry', entry.id, err);
+      }
+    }
+    setSyncingDayKey(null);
+    onShowToast(`${t.success} (${ok}/${syncable.length})`, ok === syncable.length ? 'success' : 'error');
   };
 
   // Grouping: year → date → type
@@ -191,11 +236,29 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                 </div>
 
                 <div className="space-y-8">
-                  {sortedDates.map((date) => (
+                  {sortedDates.map((date) => {
+                    const allForDay = Object.values(groupedByYear[year][date]).flat() as HistoryEntry[];
+                    const hasSyncable = allForDay.some(e => e.type !== 'bikes');
+                    const dayKey = `${year}-${date}`;
+                    return (
                     <div key={date} className="space-y-4">
                       <h3 className="sticky top-16 z-10 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
                         <span className="w-8 h-px bg-slate-200 dark:bg-slate-800" />
                         {date}
+                        <span className="flex-1" />
+                        {hasSyncable && (
+                          <button
+                            onClick={() => handleSyncDay(dayKey, allForDay)}
+                            disabled={syncingDayKey === dayKey}
+                            className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 border border-blue-100 dark:border-blue-900/30 active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            {syncingDayKey === dayKey
+                              ? <div className="h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              : <RefreshCw size={11} />
+                            }
+                            {t.submit}
+                          </button>
+                        )}
                       </h3>
 
                       <div className="space-y-6">
@@ -254,7 +317,8 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                         ))}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -334,24 +398,6 @@ export const History: React.FC<Props> = ({ settings, history, onClear, onShowToa
                  ))}
                </div>
             </div>
-
-            {/* Sync button — always available so any device can re-send with the correct historical date */}
-            {selectedEntry.type !== 'bikes' && (
-              <Button
-                fullWidth
-                variant="primary"
-                onClick={() => handleRetrySync(selectedEntry)}
-                disabled={retryingId === selectedEntry.id}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  {retryingId === selectedEntry.id
-                    ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    : <RefreshCw size={16} />
-                  }
-                  {t.submit}
-                </div>
-              </Button>
-            )}
 
             <Button fullWidth variant="secondary" onClick={() => setSelectedEntry(null)}>
               {t.later}
