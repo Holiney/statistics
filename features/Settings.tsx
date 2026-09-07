@@ -472,12 +472,14 @@ export const Settings: React.FC<Props> = ({
                   <Link size={16} />
                   <span className="text-xs font-medium">Google Apps Script Webhook</span>
                 </div>
-                <input
-                  type="text"
-                  value={settings.webhookUrl}
-                  readOnly
-                  className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-500 dark:text-slate-400 outline-none cursor-default select-all"
-                />
+                <a
+                  href={settings.webhookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-slate-100 dark:bg-slate-700 rounded-lg p-3 text-xs font-mono text-blue-500 dark:text-blue-400 break-all leading-relaxed"
+                >
+                  {settings.webhookUrl}
+                </a>
               </div>
 
               <div className="space-y-2">
