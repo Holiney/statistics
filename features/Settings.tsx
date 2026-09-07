@@ -475,9 +475,8 @@ export const Settings: React.FC<Props> = ({
                 <input
                   type="text"
                   value={settings.webhookUrl}
-                  onChange={(e) => updateSettings({ webhookUrl: e.target.value })}
-                  placeholder="https://script.google.com/..."
-                  className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  readOnly
+                  className="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono text-slate-500 dark:text-slate-400 outline-none cursor-default select-all"
                 />
               </div>
 
