@@ -518,7 +518,7 @@ function fixHeadersTextFormat() {
 // If this writes data → deployed code is correct, problem is in the app's payload.
 // If this doesn't write → deployed code is old/broken.
 function testHttpPost() {
-  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzgovsIQyZPGdeWR-x4UBuoJRNtSM7n3Q7QYDWg2VTdRuR2RrmXSrriV7Uw8a82FmMc9Q/exec';
+  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby7cpXKMT9F8Q_unjhJkgr4UFvUDbvJAD9fBJVlOzjKZsF4975PvbMZCSFl0DkKOp_Kmw/exec';
   const payload = {
     date: "2026-07-22T12:00:00",
     year: 2026,
