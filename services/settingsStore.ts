@@ -11,7 +11,7 @@ export type GlobalSettings = Pick<AppSettings,
 >;
 
 export const GLOBAL_KEYS: (keyof GlobalSettings)[] = [
-  'webhookUrl',
+  // webhookUrl is hardcoded — excluded from Firestore sync
   'microsoftWebhookUrl',
   'microsoftWorkbookUrl',
   'syncProvider',
