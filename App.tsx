@@ -4,7 +4,7 @@ import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { AppSettings, HistoryEntry, Tab, TelegramUser, Zone, Category } from './types';
-import { TRANSLATIONS } from './constants';
+import { TRANSLATIONS, GOOGLE_WEBHOOK_URL } from './constants';
 import { Personnel } from './features/Personnel';
 import { Bikes } from './features/Bikes';
 import { Office } from './features/Office';
@@ -21,7 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   language: 'ua',
   theme: 'dark',
   vibration: true,
-  webhookUrl: 'https://script.google.com/macros/s/AKfycby7cpXKMT9F8Q_unjhJkgr4UFvUDbvJAD9fBJVlOzjKZsF4975PvbMZCSFl0DkKOp_Kmw/exec',
+  webhookUrl: GOOGLE_WEBHOOK_URL,
   microsoftWebhookUrl: '',
   microsoftWorkbookUrl: 'https://excel.cloud.microsoft/open/onedrive/?docId=ACAB54217385C940%21s337ae4848b254850b1e733d23a59c44f&driveId=ACAB54217385C940',
   syncProvider: 'google',
@@ -40,7 +40,9 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('ws_settings');
       if (!saved) return DEFAULT_SETTINGS;
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      // webhookUrl always comes from code — an old URL cached in localStorage
+      // must never override it.
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved), webhookUrl: GOOGLE_WEBHOOK_URL };
     } catch {
       return DEFAULT_SETTINGS;
     }

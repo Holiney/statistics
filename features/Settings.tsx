@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TRANSLATIONS } from '../constants';
 import { AppSettings, Language, TelegramUser, Zone, Category, CategoryKind } from '../types';
-import { Moon, Sun, Smartphone, Link, User, Trash2, ShieldCheck, ShieldOff, Lock, Plus, EyeOff, Eye } from 'lucide-react';
+import { Moon, Sun, Smartphone, Link, User, Trash2, ShieldCheck, ShieldOff, Plus, EyeOff, Eye } from 'lucide-react';
 import { Card } from '../components/UI';
 import { triggerHaptic } from '../utils';
 import { filterByKind } from '../services/categoriesStore';
@@ -29,12 +29,8 @@ export const Settings: React.FC<Props> = ({
   categories, onSaveCategory, onDeleteCategory,
 }) => {
   const t = TRANSLATIONS[settings.language];
-  const [passwordInput, setPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomLimited, setNewRoomLimited] = useState(false);
-  const [newPasswordInput, setNewPasswordInput] = useState('');
-  const [passwordSaved, setPasswordSaved] = useState(false);
   const [newPersonnelZone, setNewPersonnelZone] = useState('');
   const [newBikeCategory, setNewBikeCategory] = useState('');
 
@@ -57,29 +53,10 @@ export const Settings: React.FC<Props> = ({
     });
   };
 
-  const handleSavePassword = () => {
-    const p = newPasswordInput.trim();
-    if (!p) return;
-    updateSettings({ adminPassword: p });
-    setNewPasswordInput('');
-    setPasswordSaved(true);
-    setTimeout(() => setPasswordSaved(false), 2000);
-  };
-
   const handleVibrationToggle = () => {
     const newState = !settings.vibration;
     updateSettings({ vibration: newState });
     if (newState) triggerHaptic(true);
-  };
-
-  const handleLogin = () => {
-    const ok = onAdminLogin(passwordInput);
-    if (ok) {
-      setPasswordInput('');
-      setLoginError(false);
-    } else {
-      setLoginError(true);
-    }
   };
 
   return (
@@ -187,59 +164,15 @@ export const Settings: React.FC<Props> = ({
                   <ShieldOff size={14} /> Logout
                 </button>
               </div>
-
-              {/* Change password */}
-              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-700">
-                <span className="text-xs font-medium text-slate-500">Change password</span>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={newPasswordInput}
-                    onChange={(e) => setNewPasswordInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSavePassword()}
-                    placeholder="New password"
-                    className="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2.5 text-sm font-mono text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <button
-                    onClick={handleSavePassword}
-                    className={`px-3 rounded-lg text-sm font-bold transition-colors ${
-                      passwordSaved
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-100 hover:bg-blue-500 hover:text-white'
-                    }`}
-                  >
-                    {passwordSaved ? '✓' : 'Save'}
-                  </button>
-                </div>
-              </div>
             </Card>
           ) : (
-            <Card className="space-y-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Lock size={18} />
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Enter password to unlock admin</span>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={passwordInput}
-                  onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  placeholder="Password"
-                  className={`flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 text-sm font-mono focus:ring-2 outline-none ${
-                    loginError ? 'ring-2 ring-red-400 text-red-500' : 'text-slate-600 dark:text-slate-300 focus:ring-blue-500'
-                  }`}
-                />
-                <button
-                  onClick={handleLogin}
-                  className="px-4 rounded-lg bg-blue-500 text-white text-sm font-bold hover:bg-blue-600 active:scale-95 transition-all"
-                >
-                  OK
-                </button>
-              </div>
-              {loginError && (
-                <p className="text-xs text-red-400 px-1">Wrong password</p>
-              )}
+            <Card>
+              <button
+                onClick={() => onAdminLogin('')}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-blue-500 text-white text-sm font-bold hover:bg-blue-600 active:scale-95 transition-all"
+              >
+                <ShieldCheck size={18} /> Admin mode
+              </button>
             </Card>
           )}
         </section>

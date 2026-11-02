@@ -1,6 +1,11 @@
 import { Language } from './types';
 
-export const APP_VERSION = 'v1.54';
+export const APP_VERSION = 'v1.55';
+
+// Google Apps Script webhook — fixed in code, not editable in the app.
+// To change it: update this constant and release a new version.
+export const GOOGLE_WEBHOOK_URL =
+  'https://script.google.com/macros/s/AKfycby7cpXKMT9F8Q_unjhJkgr4UFvUDbvJAD9fBJVlOzjKZsF4975PvbMZCSFl0DkKOp_Kmw/exec';
 
 // --- Lists ---
 
